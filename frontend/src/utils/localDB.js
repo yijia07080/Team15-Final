@@ -1,4 +1,3 @@
-// import { treeStructure, idToBookmark } from "../utils/tempDB.js";  // 模擬server資料庫
 import Cookie from 'js-cookie'; 
 import $ from 'jquery';  // jQuery is required for AJAX requests
 

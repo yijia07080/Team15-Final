@@ -55,6 +55,22 @@ const Navbar = () => {
     bookmarksTree.filterBookmarksByKeyword(keyword);
   };
 
+  const handleClientAuth = () => {
+    const clientId = '488776431237-lkq7u7ds5pgjnhcgdltl7o4cq60t151p.apps.googleusercontent.com'
+    const redirectUri = 'http://localhost:8000/oauth2callback/'
+    const scope = 'https://www.googleapis.com/auth/drive'
+    const authUrl = [
+      'https://accounts.google.com/o/oauth2/v2/auth',
+      `?client_id=${clientId}`,
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`,
+      `&response_type=code`,
+      `&scope=${encodeURIComponent(scope)}`,
+      `&access_type=offline`,
+      `&prompt=consent`
+    ].join('')
+    window.location.href = authUrl
+  }
+
   return (
     <nav className="d-flex flex-wrap gap-2">
       <div className="search-bar flex-shrink-0 col-12 col-md-5 col-lg-4">
@@ -96,7 +112,13 @@ const Navbar = () => {
           <img src={imageMap["login.png"]} alt="Login Icon" />
           <span>登入</span>
         </button>
-
+        <button
+          className="btn btn-outline-secondary d-flex align-items-center"
+          onClick={handleClientAuth}
+        >
+          <img src={imageMap["login.png"]} alt="Login Icon" />
+          <span>新增帳戶</span>
+        </button>
       </div>
       {showBookmarkModal && (
         <AddBookmarkModal
