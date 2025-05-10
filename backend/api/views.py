@@ -1,13 +1,55 @@
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, HttpResponseBadRequest
 from .models import Bookmarks, TreeStructure, User
-from django.shortcuts import render
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
 from django.core.cache import cache
-from django.http import HttpResponse
-import re
+from django.conf import settings
 from datetime import datetime
+import subprocess
+import requests
+import logging
 import json
 import html
+import os
+import re
+
+logger = logging.getLogger(__name__)
+
+@csrf_exempt
+# @login_required # 強迫使用者登入 (登入功能完成後需啟用)
+def oauth2callback(request):
+    code = request.GET.get('code')
+    if not code:
+        logger.error('Missing code in callback')
+        return HttpResponseBadRequest('Missing code')
+
+    token_resp = requests.post(
+        'https://oauth2.googleapis.com/token',
+        data={
+            'code': code,
+            'client_id': settings.CLIENT_ID,
+            'client_secret': settings.CLIENT_SECRET,
+            'redirect_uri': settings.REDIRECT_URI,
+            'grant_type': 'authorization_code'
+        }
+    )
+
+    if token_resp.status_code != 200:
+        logger.error('Token exchange failed: %s', token_resp.text)
+        return HttpResponseBadRequest('Token exchange failed')
+
+    token = token_resp.json()
+    logger.info('Obtained token: %s', token)
+
+    user = request.user if request.user.is_authenticated else None
+    user_id = getattr(user, 'id', 'anonymous')
+    logger.info('Current user id: %s', user_id)
+
+    # … 這裡放 rclone config create 等程式 …
+
+    return redirect('http://localhost:5174/')
+
 
 # Request rate limit
 def rate_limit(view_func):
