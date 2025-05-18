@@ -43,9 +43,9 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder }) => {
           <img src={imageMap[item.img]} alt={item.name} />
           <span>{item.name}</span>
         </div>
-        <div className="hidden-setting">
+        {/* <div className="hidden-setting">
           <img src={imageMap["full_star.png"]} alt="Star Icon" name="star" />
-        </div>
+        </div> */}
       </a>
     </div>
   );

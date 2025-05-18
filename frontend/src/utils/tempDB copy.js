@@ -13,7 +13,7 @@ export const idToFile = {
     url: "#",
     img: "folder.png",
     name: "home",
-    hidden: true,
+    hidden: false,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "root", // root不顯示
@@ -24,7 +24,7 @@ export const idToFile = {
     url: "#",
     img: "folder.png",
     name: "群組1",
-    hidden: true,
+    hidden: false,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "folder",
@@ -46,7 +46,7 @@ export const idToFile = {
     url: "#",
     img: "folder.png",
     name: "群組2",
-    hidden: true,
+    hidden: false,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "folder",

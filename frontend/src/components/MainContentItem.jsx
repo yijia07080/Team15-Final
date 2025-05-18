@@ -33,24 +33,24 @@ const MainContentItem = ({
       onClick={handleClick}
     >
       <div className="hidden-setting">
-        <img
+        {/* <img
           src={imageMap[bookmark.starred ? "full_star.png" : "empty_star.png"]}
           alt="Star Icon"
           name="star"
-        />
+        /> */}
         <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
       </div>
       <div className="title">
         <img src={imageMap[bookmark.img]} alt={bookmark.name} />
         {bookmark.name}
       </div>
-      <div className="tags">
+      {/* <div className="tags">
         {bookmark.tags.map((tag, tagIdx) => (
           <span key={tagIdx} className="badge bg-secondary">
             {tag}
           </span>
         ))}
-      </div>
+      </div> */}
     </a>
   );
 };

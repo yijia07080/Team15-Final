@@ -4,9 +4,8 @@ import BookmarksContext from "../context/BookmarksContext";
 
 const MainContent = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
-  const bookmarks = bookmarksTree
-    .getCurrentChildren()
-    .filter((bookmark) => !bookmark.hidden);
+  const bookmarks = bookmarksTree.getCurrentChildren().filter((bookmark) => !bookmark.hidden);
+  console.log("MainContentItem bookmarksTree", bookmarks);
   const handleToggleStar = (id) => {
     bookmarksTree.toggleStarred(id);
   };
@@ -18,15 +17,18 @@ const MainContent = () => {
   };
   return (
     <div className="tag-container">
-      {bookmarks.map((bookmark) => (
-        <MainContentItem
-          key={bookmark.id}
-          bookmark={bookmark}
-          onToggleStar={handleToggleStar}
-          onMoveToFolder={handleMoveToFolder}
-          onDeleteBookmark={handleDeleteBookmark}
-        />
-      ))}
+      {bookmarks.map((bookmark) => {
+        // console.log("Rendering bookmark with id:", bookmark);
+        return (
+          <MainContentItem
+            key={bookmark.id}
+            bookmark={bookmark}
+            onToggleStar={handleToggleStar}
+            onMoveToFolder={handleMoveToFolder}
+            onDeleteBookmark={handleDeleteBookmark}
+          />
+        );
+      })}
     </div>
   );
 };

@@ -4,28 +4,35 @@ import BookmarksContext from "../context/BookmarksContext";
 
 const Sidebar = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
-  const starredBookmarks = bookmarksTree.getStarredBookmarks();
+  const folders = bookmarksTree
+    .getCurrentChildren()
+    .filter((item) => item.metadata.file_type === "folder");
+  // const starredBookmarks = bookmarksTree.getStarredBookmarks();
 
-  const handleToggleStar = (id) => {
-    bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
-    bookmarksTree.toggleStarred(id);
-  };
+  // const handleToggleStar = (id) => {
+  //   bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
+  //   bookmarksTree.toggleStarred(id);
+  // };
   const handleMoveToFolder = (id) => {
-    bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
+    // bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
     bookmarksTree.moveToFolder(id);
   };
 
-  return (
+   return (
     <div className="sidebar d-none d-lg-block">
       <HomeItem onMoveToFolder={handleMoveToFolder} />
-      {starredBookmarks.map((item) => (
-        <SidebarItem
-          key={item.id}
-          item={item}
-          onToggleStar={handleToggleStar}
-          onMoveToFolder={handleMoveToFolder}
-        />
-      ))}
+      
+      {folders.map((folder) => {
+  // console.log("Rendering SidebarItem with id:", folder.id, folder);
+        return (
+          <SidebarItem
+            key={folder.id}
+            item={folder}
+            onMoveToFolder={handleMoveToFolder}
+          />
+        );
+      })}
+
     </div>
   );
 };

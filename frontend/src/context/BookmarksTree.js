@@ -1,5 +1,5 @@
 class BookmarksTree {
-  constructor(treeStructure = null, idToBookmark = null, loaclDB, onUpdate) {
+  constructor(treeStructure = null, idToBookmark = null, onUpdate) {
     // 以 map 紀錄樹狀結構：node id -> { parent_id, children_id }
     this.treeStructure = { 0: { parent_id: null, children_id: [] } };
     // 以 map 紀錄書籤資訊：node id -> bookmark
@@ -7,7 +7,7 @@ class BookmarksTree {
     // 當前所在的 node id
     this.currentNode = 0;
     // 連接到操作 indexedDB 的物件
-    this.loaclDB = loaclDB;
+    // this.loaclDB = loaclDB;
     // 通知 React 更新的函式
     this.onUpdate = onUpdate;
     // 紀錄目前的tag
@@ -42,14 +42,24 @@ class BookmarksTree {
   // 對 node id 的 srarred 屬性取反，並通知 React 更新
   toggleStarred(id) {
     this.idToBookmark[id].starred = !this.idToBookmark[id].starred;
-    this.loaclDB.updateBookmark(id, this.idToBookmark[id]);
+    // this.loaclDB.updateBookmark(id, this.idToBookmark[id]);
     this.onUpdate();
   }
 
   // 取得當前位置(currentNode)下的書籤，回傳 bookmark array
+  // getCurrentChildren() {
+  //   return this.treeStructure[this.currentNode].children_id.map(
+  //     (id) => this.idToBookmark[id],
+  //   );
+  // }
+
+  // 取得當前位置(currentNode)下的書籤，回傳 bookmark array，但有id
   getCurrentChildren() {
     return this.treeStructure[this.currentNode].children_id.map(
-      (id) => this.idToBookmark[id],
+      (id) => ({ 
+        id: id,
+        ...this.idToBookmark[id],
+      })
     );
   }
 
@@ -59,15 +69,59 @@ class BookmarksTree {
   }
 
   // 取得從 root 走到 currentNode 的路徑，回傳 bookmark array
+  // getPathToBookmark() {
+  //   const path = [];
+  //   let current = this.currentNode;
+  //   while (current !== 0) {
+  //     path.unshift(this.idToBookmark[current]);
+  //     current = this.treeStructure[current].parent_id;
+  //   }
+  //   return path;
+  // }
+
+  // 沒有id，自己手動加入
   getPathToBookmark() {
     const path = [];
     let current = this.currentNode;
-    while (current !== 0) {
-      path.unshift(this.idToBookmark[current]);
-      current = this.treeStructure[current].parent_id;
+
+    while (current !== null && current !== 0) { 
+      const fileData = this.idToBookmark[current];
+      if (fileData) { 
+        path.unshift({
+            id: current,
+            ...fileData 
+        });
+      }
+      const nodeInfo = this.treeStructure[current];
+      if (!nodeInfo || nodeInfo.parent_id === null) {
+          break; 
+      }
+      current = nodeInfo.parent_id;
     }
-    return path;
+
+   
+    if (this.currentNode !== 0) {
+        const rootData = this.idToBookmark[0];
+        if (rootData) { 
+            path.unshift({
+                id: 0,
+                ...rootData
+            });
+        }
+    } else {
+        const rootData = this.idToBookmark[0];
+        if (rootData) {
+            path.push({ 
+                id: 0,
+                ...rootData
+            });
+        }
+    }
+    path.shift();
+    // console.log(path);
+    return path; 
   }
+
 
   // 移動到 node id，並通知 React 更新
   moveToFolder(id) {
@@ -89,8 +143,8 @@ class BookmarksTree {
     };
     this.treeStructure[this.currentNode].children_id.push(id);
     this.treeStructure[id] = { parent_id: this.currentNode, children_id: [] };
-    this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
-    this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
+    // this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
+    // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
     this.onUpdate();
   }
   // 插入一個資料夾，並通知 React 更新
@@ -107,8 +161,8 @@ class BookmarksTree {
     };
     this.treeStructure[this.currentNode].children_id.push(id);
     this.treeStructure[id] = { parent_id: this.currentNode, children_id: [] };
-    this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
-    this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
+    // this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
+    // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
     this.onUpdate();
   }
 
@@ -127,11 +181,11 @@ class BookmarksTree {
       ].children_id.filter((child_id) => child_id !== node_id);
       delete this.treeStructure[node_id];
       delete this.idToBookmark[node_id];
-      this.loaclDB.delId(node_id);
+      // this.loaclDB.delId(node_id);
     };
     _deleteBookmark(id);
-    this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
-    this.loaclDB.delId(id);
+    // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
+    // this.loaclDB.delId(id);
     this.onUpdate();
   }
 
