@@ -10,6 +10,7 @@ export const treeStructure = {
 
 export const idToFile = {
   0: {
+    id : 0,
     url: "#",
     img: "folder.png",
     name: "home",
@@ -21,6 +22,7 @@ export const idToFile = {
     },
   },
   1: {
+    id: 1,
     url: "#",
     img: "folder.png",
     name: "群組1",
@@ -32,6 +34,7 @@ export const idToFile = {
     },
   },
   2: {
+    id: 2,
     url: "http://localhost:3000/file/1",
     img: "https://drive-thirdparty.googleusercontent.com/64/type/application/pdf",
     name: "履歷.pdf",
@@ -43,6 +46,7 @@ export const idToFile = {
     },
   },
   3: {
+    id: 3,
     url: "#",
     img: "folder.png",
     name: "群組2",
@@ -55,6 +59,7 @@ export const idToFile = {
     },
   },
   4: {
+    id: 4,
     url: "#",
     img: "folder.png",
     name: "photo backup",
@@ -66,6 +71,7 @@ export const idToFile = {
     },
   },
   5: {
+    id: 5,
     url: "http://localhost:3000/file/5",
     img: "https://drive-thirdparty.googleusercontent.com/64/type/text/plain",
     name: "test.txt",
@@ -77,6 +83,7 @@ export const idToFile = {
     },
   },
   6: {
+    id: 6,
     url: "http://localhost:3000/file/3",
     img: "https://drive-thirdparty.googleusercontent.com/64/type/image/jpeg",
     name: "2023-10-01 12.00.00.jpg",

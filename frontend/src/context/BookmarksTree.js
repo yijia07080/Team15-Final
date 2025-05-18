@@ -47,21 +47,21 @@ class BookmarksTree {
   }
 
   // 取得當前位置(currentNode)下的書籤，回傳 bookmark array
-  // getCurrentChildren() {
-  //   return this.treeStructure[this.currentNode].children_id.map(
-  //     (id) => this.idToBookmark[id],
-  //   );
-  // }
-
-  // 取得當前位置(currentNode)下的書籤，回傳 bookmark array，但有id
   getCurrentChildren() {
     return this.treeStructure[this.currentNode].children_id.map(
-      (id) => ({ 
-        id: id,
-        ...this.idToBookmark[id],
-      })
+      (id) => this.idToBookmark[id],
     );
   }
+
+  // 取得當前位置(currentNode)下的書籤，回傳 bookmark array，但有id
+  // getCurrentChildren() {
+  //   return this.treeStructure[this.currentNode].children_id.map(
+  //     (id) => ({ 
+  //       id: id,
+  //       ...this.idToBookmark[id],
+  //     })
+  //   );
+  // }
 
   // 取得當前位置(currentNode)的父節點，回傳 node id
   getCurrentParent() {
@@ -69,58 +69,58 @@ class BookmarksTree {
   }
 
   // 取得從 root 走到 currentNode 的路徑，回傳 bookmark array
-  // getPathToBookmark() {
-  //   const path = [];
-  //   let current = this.currentNode;
-  //   while (current !== 0) {
-  //     path.unshift(this.idToBookmark[current]);
-  //     current = this.treeStructure[current].parent_id;
-  //   }
-  //   return path;
-  // }
-
-  // 沒有id，自己手動加入
   getPathToBookmark() {
     const path = [];
     let current = this.currentNode;
-
-    while (current !== null && current !== 0) { 
-      const fileData = this.idToBookmark[current];
-      if (fileData) { 
-        path.unshift({
-            id: current,
-            ...fileData 
-        });
-      }
-      const nodeInfo = this.treeStructure[current];
-      if (!nodeInfo || nodeInfo.parent_id === null) {
-          break; 
-      }
-      current = nodeInfo.parent_id;
+    while (current !== 0) {
+      path.unshift(this.idToBookmark[current]);
+      current = this.treeStructure[current].parent_id;
     }
+    return path;
+  }
+
+  // 沒有id，自己手動加入
+  // getPathToBookmark() {
+  //   const path = [];
+  //   let current = this.currentNode;
+
+  //   while (current !== null && current !== 0) { 
+  //     const fileData = this.idToBookmark[current];
+  //     if (fileData) { 
+  //       path.unshift({
+  //           id: current,
+  //           ...fileData 
+  //       });
+  //     }
+  //     const nodeInfo = this.treeStructure[current];
+  //     if (!nodeInfo || nodeInfo.parent_id === null) {
+  //         break; 
+  //     }
+  //     current = nodeInfo.parent_id;
+  //   }
 
    
-    if (this.currentNode !== 0) {
-        const rootData = this.idToBookmark[0];
-        if (rootData) { 
-            path.unshift({
-                id: 0,
-                ...rootData
-            });
-        }
-    } else {
-        const rootData = this.idToBookmark[0];
-        if (rootData) {
-            path.push({ 
-                id: 0,
-                ...rootData
-            });
-        }
-    }
-    path.shift();
-    // console.log(path);
-    return path; 
-  }
+  //   if (this.currentNode !== 0) {
+  //       const rootData = this.idToBookmark[0];
+  //       if (rootData) { 
+  //           path.unshift({
+  //               id: 0,
+  //               ...rootData
+  //           });
+  //       }
+  //   } else {
+  //       const rootData = this.idToBookmark[0];
+  //       if (rootData) {
+  //           path.push({ 
+  //               id: 0,
+  //               ...rootData
+  //           });
+  //       }
+  //   }
+  //   path.shift();
+  //   // console.log(path);
+  //   return path; 
+  // }
 
 
   // 移動到 node id，並通知 React 更新
