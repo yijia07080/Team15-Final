@@ -5,7 +5,7 @@ import BookmarksContext from "../context/BookmarksContext";
 const MainContent = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
   const bookmarks = bookmarksTree.getCurrentChildren().filter((bookmark) => !bookmark.hidden);
-  console.log("MainContentItem bookmarksTree", bookmarks);
+  // console.log("MainContentItem bookmarksTree", bookmarks);
   const handleToggleStar = (id) => {
     bookmarksTree.toggleStarred(id);
   };

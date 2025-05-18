@@ -4,11 +4,16 @@ import BookmarksContext from "../context/BookmarksContext";
 
 const Sidebar = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
-  const folders = bookmarksTree
-    .getCurrentChildren()
-    .filter((item) => item.metadata.file_type === "folder");
-  // const starredBookmarks = bookmarksTree.getStarredBookmarks();
+  // const folders = bookmarksTree
+  //   .getCurrentChildren()
+  //   .filter((item) => item.metadata.file_type === "folder");
 
+
+  // 側邊欄位只顯示在root下的資料夾
+  const folders = bookmarksTree
+    .getRootChildren()
+    .filter((item) => item.metadata.file_type === "folder");
+  
   // const handleToggleStar = (id) => {
   //   bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
   //   bookmarksTree.toggleStarred(id);

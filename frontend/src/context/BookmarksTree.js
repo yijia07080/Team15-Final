@@ -46,6 +46,16 @@ class BookmarksTree {
     this.onUpdate();
   }
 
+  // 取得 root (id=0) 的子節點，回傳 bookmark array
+  getRootChildren() {
+    const rootNode = this.treeStructure[0]; // 確保 root node 存在
+    if (!rootNode) {
+      console.error("Root node (id=0) does not exist in treeStructure.");
+      return [];
+    }
+    return rootNode.children_id.map((id) => this.idToBookmark[id]);
+  }
+  
   // 取得當前位置(currentNode)下的書籤，回傳 bookmark array
   getCurrentChildren() {
     return this.treeStructure[this.currentNode].children_id.map(
