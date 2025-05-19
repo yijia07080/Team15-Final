@@ -8,6 +8,7 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
   const [file, setFile] = useState(null);
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -25,7 +26,7 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
     const newBookmark = {
       name: name || file.name, // 如果未輸入名稱，使用檔案名稱
       tags,
-      img: "file.png", // 預設檔案圖標
+      img: getFileIcon(fileType), // 根據檔案類型選擇圖示
       hidden,
       file_type: fileType,
       used_size: usedSize,
@@ -35,10 +36,45 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
     onClose();
   };
 
+  // 根據檔案類型選擇適當的圖示
+  const getFileIcon = (fileType) => {
+    const fileTypeMap = {
+      pdf: "https://drive-thirdparty.googleusercontent.com/64/type/application/pdf",
+      txt: "https://drive-thirdparty.googleusercontent.com/64/type/text/plain",
+      jpg: "https://drive-thirdparty.googleusercontent.com/64/type/image/jpeg",
+      jpeg: "https://drive-thirdparty.googleusercontent.com/64/type/image/jpeg",
+      png: "https://drive-thirdparty.googleusercontent.com/64/type/image/png"
+    };
+    
+    return fileTypeMap[fileType.toLowerCase()] || "file.png";
+  };
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     setFile(selectedFile);
     setName(selectedFile?.name || ""); // 預設名稱為檔案名稱
+  };
+
+  // 拖曳事件處理函數
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const selectedFile = e.dataTransfer.files[0];
+      setFile(selectedFile);
+      setName(selectedFile?.name || "");
+    }
   };
 
   const handleAddTag = () => {
@@ -66,7 +102,31 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
         <form onSubmit={handleSubmit}>
           <div className={styles['form-group']}>
             <label>上傳檔案</label>
-            <input type="file" onChange={handleFileChange} required />
+            <div 
+              className={`${styles['drop-zone']} ${isDragging ? styles['drop-zone-active'] : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {file ? (
+                <div className={styles['file-selected']}>
+                  <p>已選擇檔案: {file.name}</p>
+                  <p>({Math.round(file.size / 1024)} KB)</p>
+                </div>
+              ) : (
+                <>
+                  <p>拖放檔案至此區域，或</p>
+                  <label className={styles['file-input-label']}>
+                    選擇檔案
+                    <input 
+                      type="file" 
+                      onChange={handleFileChange} 
+                      className={styles['file-input']} 
+                    />
+                  </label>
+                </>
+              )}
+            </div>
           </div>
           <div className={styles['form-group']}>
             <label>檔案名稱</label>
