@@ -5,37 +5,40 @@ import styles from './AddBookmarkModal.module.css';
 const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
   const { bookmarksTree } = useContext(BookmarksContext);
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
+  const [file, setFile] = useState(null);
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState([]);
-  const [faviconUrl, setFaviconUrl] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!file) {
+      alert("請選擇一個檔案");
+      return;
+    }
+
+    const fileType = file.name.split('.').pop(); // 根據檔案附檔名決定 file_type
+    const usedSize = file.size; // 根據檔案大小決定 used_size
     const hidden =
       currentFilterTags.length > 0 &&
       !currentFilterTags.some((tag) => tags.includes(tag));
-    const newBookmark = { name, url, tags, img: faviconUrl, hidden };
+
+    const newBookmark = {
+      name: name || file.name, // 如果未輸入名稱，使用檔案名稱
+      tags,
+      img: "file.png", // 預設檔案圖標
+      hidden,
+      file_type: fileType,
+      used_size: usedSize,
+    };
+
     bookmarksTree.addBookmark(newBookmark);
     onClose();
   };
 
-  const handleUrlChange = (e) => {
-    const newUrl = e.target.value;
-    setUrl(newUrl);
-    fetchFavicon(newUrl);
-  };
-
-  const fetchFavicon = (websiteUrl) => {
-    try {
-      const urlObj = new URL(websiteUrl);
-      const domain = urlObj.hostname;
-      const faviconPath = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-      setFaviconUrl(faviconPath);
-    } catch (error) {
-      console.error("Invalid URL:", error);
-      setFaviconUrl("");
-    }
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    setFile(selectedFile);
+    setName(selectedFile?.name || ""); // 預設名稱為檔案名稱
   };
 
   const handleAddTag = () => {
@@ -62,29 +65,18 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
       <div className={styles['modal-content']} onClick={stopBackdropClick}>
         <form onSubmit={handleSubmit}>
           <div className={styles['form-group']}>
-            <label>新增書籤名稱</label>
+            <label>上傳檔案</label>
+            <input type="file" onChange={handleFileChange} required />
+          </div>
+          <div className={styles['form-group']}>
+            <label>檔案名稱</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              autoFocus
             />
           </div>
-          <div className={styles['form-group']}>
-            <label>連接網址</label>
-            <input type="url" value={url} onChange={handleUrlChange} required />
-          </div>
-          {faviconUrl && (
-            <div className={styles['form-group']}>
-              <label>網站圖標預覽:</label>
-              <img
-                src={faviconUrl}
-                alt="網站圖標預覽"
-                className={styles['favicon-preview']}
-              />
-            </div>
-          )}
           <div className={styles['form-group']}>
             <label>標籤</label>
             <div className={styles['tag-input-container']}>
@@ -115,7 +107,8 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
               onClick={onClose}
             >
               取消
-            </button><button type="submit" className={`btn btn-primary ${styles['btn-primary']}`}>
+            </button>
+            <button type="submit" className={`btn btn-primary ${styles['btn-primary']}`}>
               確認
             </button>
           </div>

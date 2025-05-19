@@ -37,7 +37,7 @@ export const idToFile = {
   },
   2: {
     id: 2,
-    url: "http://localhost:3000/file/1",
+    url: "http://localhost:3000/file/2",
     img: "https://drive-thirdparty.googleusercontent.com/64/type/application/pdf",
     name: "履歷.pdf",
     tags: ["pdf"],
@@ -90,7 +90,7 @@ export const idToFile = {
   },
   6: {
     id: 6,
-    url: "http://localhost:3000/file/3",
+    url: "http://localhost:3000/file/6",
     img: "https://drive-thirdparty.googleusercontent.com/64/type/image/jpeg",
     name: "2023-10-01 12.00.00.jpg",
     hidden: false,

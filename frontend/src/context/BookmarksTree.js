@@ -140,16 +140,20 @@ class BookmarksTree {
   }
 
   // 插入一個書籤，並通知 React 更新
-  addBookmark({ name, url, tags, img, hidden }) {
+  addBookmark({ name, tags, img, hidden, file_type, used_size}) {
     const id = Date.now(); // 使用當前時間戳作為唯一 ID
     this.idToBookmark[id] = {
       id,
       name,
-      url,
+      url: 'http://localhost:5174/file/${id}',
       tags,
       img,
-      starred: false,
       hidden: hidden || false,
+      metadata: {
+        last_modified: new Date().toISOString(), // 動態生成最後修改時間
+        file_type,
+        used_size: used_size || 0,
+      },
     };
     this.treeStructure[this.currentNode].children_id.push(id);
     this.treeStructure[id] = { parent_id: this.currentNode, children_id: [] };

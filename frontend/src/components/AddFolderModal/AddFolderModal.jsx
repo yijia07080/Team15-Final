@@ -43,7 +43,7 @@ const AddFolderModal = ({ onClose }) => {
       <div className={styles['modal-content']} onClick={stopBackdropClick}>
         <form onSubmit={handleSubmit}>
           <div className={styles['form-group']}>
-            <label>新增資料夾名稱</label>
+            <label>新增群組名稱</label>
             <input
               type="text"
               value={name}
