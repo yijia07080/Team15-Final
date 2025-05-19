@@ -44,13 +44,13 @@ const MainContentItem = ({
         <img src={imageMap[bookmark.img]} alt={bookmark.name} />
         {bookmark.name}
       </div>
-      {/* <div className="tags">
+      <div className="tags">
         {bookmark.tags.map((tag, tagIdx) => (
           <span key={tagIdx} className="badge bg-secondary">
             {tag}
           </span>
         ))}
-      </div> */}
+      </div>
     </a>
   );
 };

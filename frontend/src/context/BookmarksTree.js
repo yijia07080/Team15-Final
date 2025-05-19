@@ -55,7 +55,7 @@ class BookmarksTree {
     }
     return rootNode.children_id.map((id) => this.idToBookmark[id]);
   }
-  
+
   // 取得當前位置(currentNode)下的書籤，回傳 bookmark array
   getCurrentChildren() {
     return this.treeStructure[this.currentNode].children_id.map(
@@ -158,19 +158,30 @@ class BookmarksTree {
     this.onUpdate();
   }
   // 插入一個資料夾，並通知 React 更新
-  addFolder({ name, tags, hidden }) {
+  addFolder({ name, tags}) {
     const id = Date.now(); // 使用當前時間戳作為唯一 ID
+    const isParentRoot = this.idToBookmark[this.currentNode]?.metadata?.file_type === "root";
     this.idToBookmark[id] = {
       id,
       name,
       url: "#",
-      tags,
       img: "folder.png",
-      starred: false,
-      hidden: hidden || false,
+      tags,
+      hidden: isParentRoot,
+      metadata: {
+        last_modified: new Date().toISOString(), // 動態生成最後修改時間
+        file_type: "folder",
+        used_size: 0, // 預設為 0
+      },
     };
+
     this.treeStructure[this.currentNode].children_id.push(id);
     this.treeStructure[id] = { parent_id: this.currentNode, children_id: [] };
+    
+    // 更新 currentNode 的 metadata.last_modified
+    if (this.idToBookmark[this.currentNode] && this.idToBookmark[this.currentNode].metadata) {
+      this.idToBookmark[this.currentNode].metadata.last_modified = new Date().toISOString();
+    }
     // this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
     // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
     this.onUpdate();

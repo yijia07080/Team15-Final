@@ -14,7 +14,7 @@ const AddFolderModal = ({ onClose }) => {
     const hidden =
       currentFilterTags.length > 0 &&
       !currentFilterTags.some((tag) => tags.includes(tag));
-    const newFolder = { name, tags, hidden };
+    const newFolder = { name, tags};
     bookmarksTree.addFolder(newFolder);
     onClose();
   };

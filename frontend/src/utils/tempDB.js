@@ -14,6 +14,7 @@ export const idToFile = {
     url: "#",
     img: "folder.png",
     name: "home",
+    tags: [],
     hidden: true,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
@@ -26,6 +27,7 @@ export const idToFile = {
     url: "#",
     img: "folder.png",
     name: "群組1",
+    tags: [],
     hidden: true,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
@@ -38,6 +40,7 @@ export const idToFile = {
     url: "http://localhost:3000/file/1",
     img: "https://drive-thirdparty.googleusercontent.com/64/type/application/pdf",
     name: "履歷.pdf",
+    tags: ["pdf"],
     hidden: false,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
@@ -51,6 +54,7 @@ export const idToFile = {
     img: "folder.png",
     name: "群組2",
     hidden: true,
+    tags: [],
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "folder",
@@ -64,6 +68,7 @@ export const idToFile = {
     img: "folder.png",
     name: "photo backup",
     hidden: false,
+    tags: ["image"],
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "folder",
@@ -76,6 +81,7 @@ export const idToFile = {
     img: "https://drive-thirdparty.googleusercontent.com/64/type/text/plain",
     name: "test.txt",
     hidden: false,
+    tags: [],
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "txt",
@@ -88,6 +94,7 @@ export const idToFile = {
     img: "https://drive-thirdparty.googleusercontent.com/64/type/image/jpeg",
     name: "2023-10-01 12.00.00.jpg",
     hidden: false,
+    tags: [],
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "jpg",
