@@ -12,8 +12,13 @@ const Sidebar = () => {
   // 側邊欄位只顯示在root下的資料夾
   const folders = bookmarksTree
     .getRootChildren()
-    .filter((item) => item.metadata.file_type === "folder");
-  
+    .filter((item) => item.metadata.file_type === "group");
+    
+  const handleDeleteBookmark = (id) => {
+    if (confirm("確定要刪除此群組與底下所有檔案嗎?")) {
+      bookmarksTree.deleteBookmark(id);
+    }
+  };
   // const handleToggleStar = (id) => {
   //   bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
   //   bookmarksTree.toggleStarred(id);
@@ -27,17 +32,14 @@ const Sidebar = () => {
     <div className="sidebar d-none d-lg-block">
       <HomeItem onMoveToFolder={handleMoveToFolder} />
       
-      {folders.map((folder) => {
-  // console.log("Rendering SidebarItem with id:", folder.id, folder);
-        return (
-          <SidebarItem
-            key={folder.id}
-            item={folder}
-            onMoveToFolder={handleMoveToFolder}
-          />
-        );
-      })}
-
+      {folders.map((folder) => (
+        <SidebarItem
+          key={folder.id}
+          item={folder}
+          onMoveToFolder={handleMoveToFolder}
+          onDeleteBookmark={handleDeleteBookmark}
+        />
+      ))}
     </div>
   );
 };

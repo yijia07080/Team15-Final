@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"; // LOGIN
 import imageMap from "../utils/imageMap";
 import AddBookmarkModal from "./AddBookmarkModal/AddBookmarkModal";
 import AddFolderModal from "./AddFolderModal/AddFolderModal";
+import AddGroupModal from "./AddGroupModal/AddGroupModal";
 import TagFilterModal from "./TagFilterModal/TagFilterModal";
 import BookmarksContext from "../context/BookmarksContext";
 
@@ -23,6 +24,12 @@ const Navbar = () => {
   const [showFolderModal, setShowFolderModal] = useState(false);
   const handleAddFolderButtonClick = () => {
     setShowFolderModal(true);
+  };
+  
+  // 新增群組相關
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const handleAddGroupButtonClick = () => {
+    setShowGroupModal(true);
   };
 
   // 篩選tag相關
@@ -103,7 +110,15 @@ const Navbar = () => {
           className="btn btn-outline-secondary d-flex align-items-center"
           onClick={handleAddFolderButtonClick}
         >
+
           <img src={imageMap["folder.png"]} alt="Add Folder Button" />
+        </button>
+        <button
+          className="btn btn-outline-secondary d-flex align-items-center"
+          onClick={handleAddGroupButtonClick}
+        >
+          <img src={imageMap["group.png"]} alt="Add Group Button" />
+          <span>新增群組</span>
         </button>
         <button
           className="btn btn-outline-secondary d-flex align-items-center"
@@ -128,6 +143,9 @@ const Navbar = () => {
       )}
       {showFolderModal && (
         <AddFolderModal onClose={() => setShowFolderModal(false)} />
+      )}
+      {showGroupModal && (
+        <AddGroupModal onClose={() => setShowGroupModal(false)} />
       )}
       {showTagFilterModal && (
         <TagFilterModal onClose={() => setShowTagFilterModal(false)} />

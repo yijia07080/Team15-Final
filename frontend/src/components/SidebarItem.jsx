@@ -18,13 +18,16 @@ const HomeItem = ({ onMoveToFolder }) => {
   );
 };
 
-const SidebarItem = ({ item, onToggleStar, onMoveToFolder }) => {
+const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark }) => {
   const handleClick = (e) => {
-    if (e.target.name == "star") {
+    if (e.target.name === "star") {
       // 點擊 star
-
       e.preventDefault();
-      onToggleStar(item.id);
+      onToggleStar && onToggleStar(item.id);
+    } else if (e.target.name === "delete") {
+      // 點擊刪除
+      e.preventDefault();
+      onDeleteBookmark && onDeleteBookmark(item.id);
     } else if (item.url === "#") {
       // 點擊資料夾
       e.preventDefault();
@@ -42,6 +45,9 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder }) => {
         <div className="title">
           <img src={imageMap[item.img]} alt={item.name} />
           <span>{item.name}</span>
+        </div>
+        <div className="hidden-setting">
+          <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
         </div>
         {/* <div className="hidden-setting">
           <img src={imageMap["full_star.png"]} alt="Star Icon" name="star" />

@@ -161,17 +161,45 @@ class BookmarksTree {
     // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
     this.onUpdate();
   }
+
+
+  addGroup({ name, tags }) {
+    const id = Date.now(); // 使用當前時間戳作為唯一 ID
+    this.idToBookmark[id] = {
+      id,
+      name,
+      url: "#",
+      img: "group.png",
+      tags,
+      hidden: true,
+      metadata: {
+        last_modified: new Date().toISOString(),
+        file_type: "group", // 群組類型為 root
+        used_size: 0,
+        total_size: 0, // 預設總大小為 0
+      },
+    };
+
+    // 將新群組加到root的child
+    this.treeStructure[0].children_id.push(id);
+    this.treeStructure[id] = { parent_id: 0, children_id: [] };
+    if (this.idToBookmark[0] && this.idToBookmark[0].metadata) {
+      this.idToBookmark[0].metadata.last_modified = new Date().toISOString();
+    }
+    // 通知 React 更新
+    this.onUpdate();
+  }
+
   // 插入一個資料夾，並通知 React 更新
   addFolder({ name, tags}) {
     const id = Date.now(); // 使用當前時間戳作為唯一 ID
-    const isParentRoot = this.idToBookmark[this.currentNode]?.metadata?.file_type === "root";
     this.idToBookmark[id] = {
       id,
       name,
       url: "#",
       img: "folder.png",
       tags,
-      hidden: isParentRoot,
+      hidden: false,
       metadata: {
         last_modified: new Date().toISOString(), // 動態生成最後修改時間
         file_type: "folder",

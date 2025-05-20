@@ -25,13 +25,13 @@ export const idToFile = {
   1: {
     id: 1,
     url: "#",
-    img: "folder.png",
+    img: "group.png",
     name: "群組1",
     tags: [],
     hidden: true,
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
-      file_type: "folder",
+      file_type: "group",
       used_size: 2478080,
     },
   },
@@ -51,13 +51,13 @@ export const idToFile = {
   3: {
     id: 3,
     url: "#",
-    img: "folder.png",
+    img: "group.png",
     name: "群組2",
     hidden: true,
     tags: [],
     metadata: {
       last_modified: "2025-04-07T02:06:22.107Z",
-      file_type: "folder",
+      file_type: "group",
       used_size: 100,
       total_size: 20000000,
     },

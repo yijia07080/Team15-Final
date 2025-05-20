@@ -1,8 +1,8 @@
 import { useState, useContext } from "react";
 import BookmarksContext from "../../context/BookmarksContext";
-import styles from './AddFolderModal.module.css';
+import styles from './AddGroupModal.module.css';
 
-const AddFolderModal = ({ onClose }) => {
+const AddGroupModal = ({ onClose }) => {
   const { bookmarksTree } = useContext(BookmarksContext);
   const [name, setName] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -10,12 +10,8 @@ const AddFolderModal = ({ onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const currentFilterTags = bookmarksTree.getCurrentFilterTags();
-    const hidden =
-      currentFilterTags.length > 0 &&
-      !currentFilterTags.some((tag) => tags.includes(tag));
-    const newFolder = { name, tags};
-    bookmarksTree.addFolder(newFolder);
+    const newGroup = { name, tags };
+    bookmarksTree.addGroup(newGroup);
     onClose();
   };
 
@@ -43,7 +39,7 @@ const AddFolderModal = ({ onClose }) => {
       <div className={styles['modal-content']} onClick={stopBackdropClick}>
         <form onSubmit={handleSubmit}>
           <div className={styles['form-group']}>
-            <label>新增資料夾名稱</label>
+            <label>新增群組名稱</label>
             <input
               type="text"
               value={name}
@@ -52,7 +48,7 @@ const AddFolderModal = ({ onClose }) => {
               autoFocus
             />
           </div>
-          <div className={styles['form-group']}>
+          {/* <div className={styles['form-group']}>
             <label>標籤</label>
             <div className={styles['tag-input-container']}>
               <input
@@ -78,7 +74,7 @@ const AddFolderModal = ({ onClose }) => {
                 </span>
               ))}
             </div>
-          </div>
+          </div> */}
           <div className={styles['form-actions']}>
             <button
               type="button"
@@ -97,4 +93,4 @@ const AddFolderModal = ({ onClose }) => {
   );
 };
 
-export default AddFolderModal;
+export default AddGroupModal;
