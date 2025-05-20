@@ -28,6 +28,11 @@ const Sidebar = () => {
     bookmarksTree.moveToFolder(id);
   };
 
+  // 處理項目移動到資料夾
+  const handleMoveItemToGroup = (itemId, groupId) => {
+    bookmarksTree.moveItemToGroup(itemId, groupId);
+  };
+
    return (
     <div className="sidebar d-none d-lg-block">
       <HomeItem onMoveToFolder={handleMoveToFolder} />
@@ -38,6 +43,7 @@ const Sidebar = () => {
           item={folder}
           onMoveToFolder={handleMoveToFolder}
           onDeleteBookmark={handleDeleteBookmark}
+          onMoveItemToGroup={handleMoveItemToGroup}
         />
       ))}
     </div>

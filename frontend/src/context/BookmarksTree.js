@@ -139,6 +139,58 @@ class BookmarksTree {
     this.onUpdate();
   }
 
+  // 拖曳item到group
+  moveItemToGroup(itemId, groupId) {
+    // 確保item和群組都存在
+    if (!this.treeStructure[itemId] || !this.treeStructure[groupId]) {
+      console.error(`Item with id ${itemId} or folder with id ${groupId} does not exist.`);
+      return;
+    }
+
+    // 確保目標是群組
+    const targetFolder = this.idToBookmark[groupId];
+    if (targetFolder.metadata.file_type !== "group") {
+      console.error(`Target with id ${groupId} is not a folder.`);
+      return;
+    }
+
+    // 不能將自己移動到自己的子群組
+    let current = groupId;
+    while (this.treeStructure[current]) {
+      if (current === itemId) {
+        console.error("Cannot move a group into its own subgroup.");
+        return;
+      }
+      current = this.treeStructure[current].parent_id;
+    }
+
+    // 從原父節點中移除
+    const oldParentId = this.treeStructure[itemId].parent_id;
+    if (oldParentId !== null) {
+      this.treeStructure[oldParentId].children_id = this.treeStructure[oldParentId].children_id.filter(
+        id => id !== itemId
+      );
+    }
+
+    // 添加到新群組
+    this.treeStructure[groupId].children_id.push(itemId);
+    
+    // 更新項目的父節點
+    this.treeStructure[itemId].parent_id = groupId;
+    
+    // 更新時間戳
+    const now = new Date().toISOString();
+    if (this.idToBookmark[itemId].metadata) {
+      this.idToBookmark[itemId].metadata.last_modified = now;
+    }
+    if (this.idToBookmark[groupId].metadata) {
+      this.idToBookmark[groupId].metadata.last_modified = now;
+    }
+
+    // 通知 React 更新
+    this.onUpdate();
+  }
+
   // 插入一個書籤，並通知 React 更新
   addBookmark({ name, tags, img, hidden, file_type, used_size}) {
     const id = Date.now(); // 使用當前時間戳作為唯一 ID

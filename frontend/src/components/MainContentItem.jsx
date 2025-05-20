@@ -24,6 +24,13 @@ const MainContentItem = ({
       onMoveToFolder(bookmark.id);
     }
   };
+
+  // 處理拖曳開始事件
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData("text/plain", bookmark.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <a
       href={bookmark.url}
@@ -31,6 +38,8 @@ const MainContentItem = ({
       rel="noopener noreferrer"
       className="tag-card"
       onClick={handleClick}
+      draggable="true"
+      onDragStart={handleDragStart}
     >
       <div className="hidden-setting">
         {/* <img

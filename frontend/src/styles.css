@@ -225,3 +225,16 @@ a:visited {
 .btn-dark:hover {
   background-color: #23272b;
 }
+
+.bookmark-item.drag-over {
+  background-color: rgba(33, 150, 243, 0.2);
+  border: 2px dashed #2196f3;
+}
+
+.tag-card:active {
+  cursor: grabbing;
+}
+
+.tag-card {
+  cursor: grab;
+}

@@ -18,7 +18,7 @@ const HomeItem = ({ onMoveToFolder }) => {
   );
 };
 
-const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark }) => {
+const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onMoveItemToGroup }) => {
   const handleClick = (e) => {
     if (e.target.name === "star") {
       // 點擊 star
@@ -34,8 +34,38 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark }) =
       onMoveToFolder(item.id);
     }
   };
+  // 拖放相關處理函數
+  const handleDragOver = (e) => {
+    // 只有群組才能接收拖放的項目
+    if (item.metadata.file_type === "group") {
+      e.preventDefault(); // 允許放置
+      e.dataTransfer.dropEffect = "move";
+      e.currentTarget.classList.add("drag-over");
+    }
+  };
+  const handleDragLeave = (e) => {
+    // 移除視覺反饋
+    e.currentTarget.classList.remove("drag-over");
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove("drag-over"); // 移除視覺反饋
+    
+    // 獲取被拖動項目的ID
+    const draggedItemId = e.dataTransfer.getData("text/plain");
+    if (draggedItemId && onMoveItemToGroup) {
+      onMoveItemToGroup(parseInt(draggedItemId), item.id);
+    }
+  };
+
+
   return (
-    <div className="bookmark-item">
+    <div 
+      className="bookmark-item"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <a
         href={item.url}
         target={item.url && "_blank"}
