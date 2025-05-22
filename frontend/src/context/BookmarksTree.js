@@ -1,5 +1,6 @@
 class BookmarksTree {
-  constructor(treeStructure = null, idToBookmark = null, onUpdate) {
+  constructor(treeStructure = null, idToBookmark = null, uploadStatusContext, onUpdate) {
+    this.uploadStatus = uploadStatusContext;
     // 以 map 紀錄樹狀結構：node id -> { parent_id, children_id }
     this.treeStructure = { 0: { parent_id: null, children_id: [] } };
     // 以 map 紀錄書籤資訊：node id -> bookmark
@@ -191,9 +192,12 @@ class BookmarksTree {
     this.onUpdate();
   }
 
-  // 插入一個書籤，並通知 React 更新
-  addBookmark({ name, tags, img, hidden, file_type, used_size}) {
+  // 上傳新檔案，調整idToBookmark與treeStructure，並通知 React 更新
+  addBookmark({ name, tags, img, hidden, file_type, used_size}, file) {
     const id = Date.now(); // 使用當前時間戳作為唯一 ID
+    if (!tags.some(tag => tag === file_type)) {
+      tags.push(file_type); // 加上檔案類型的標籤
+    }
     this.idToBookmark[id] = {
       id,
       name,
@@ -209,9 +213,61 @@ class BookmarksTree {
     };
     this.treeStructure[this.currentNode].children_id.push(id);
     this.treeStructure[id] = { parent_id: this.currentNode, children_id: [] };
-    // this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
-    // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
-    this.onUpdate();
+
+    // upload to server
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("new_bookmark", JSON.stringify(this.idToBookmark[id]));
+    formData.append("parent_id", this.currentNode);
+
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      this.uploadStatus.addUpload(id, name, () => {xhr.abort();});
+
+      xhr.open("POST", "/api/upload", true);
+      // xhr.withCredentials = true;  // 如果需要攜帶 cookie
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          this.uploadStatus.updateUploadProgress(id, percentComplete);
+        }
+      };
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          this.uploadStatus.updateUploadProgress(id, 100);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          resolve(xhr.response);
+        } else {
+          reject(xhr.response);
+        }
+      };
+      xhr.onabort = () => reject("Upload aborted");
+      xhr.onerror = () => reject(xhr.response);
+
+      xhr.send(formData);
+
+    }).then((response) => {
+      console.log("Upload successful:", response);
+      this.onUpdate();
+
+    }).catch((error) => {
+      // rollback
+      delete this.idToBookmark[id];
+      delete this.treeStructure[id];
+      this.treeStructure[this.currentNode].children_id = this.treeStructure[this.currentNode].children_id.filter(
+        childId => childId !== id
+      );
+      this.onUpdate();
+
+      console.error("Upload failed:", error);
+      if (error === "Upload aborted") {console.log("Upload rollback success");}
+      this.uploadStatus.cancelUpload(id);
+    });
   }
 
 

@@ -16,9 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from api.views import get_csrf, bookmarks_init_api, bookmarks_update_api, bookmarks_delete_api, login_view, oauth2callback
+from api.views import get_csrf, bookmarks_init_api, bookmarks_update_api, bookmarks_delete_api, login_view, oauth2callback, upload_file
 
 urlpatterns = [
+    path('api/upload', upload_file, name='upload_file'),
+
     path('admin/', admin.site.urls),
     path('api/get_csrf', get_csrf, name='get_csrf'),
     path('api/bookmarks/init', bookmarks_init_api, name='bookmarks_init_api'),

@@ -238,3 +238,22 @@ a:visited {
 .tag-card {
   cursor: grab;
 }
+
+.upload-status-container {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  width: 250px;
+  background: #333;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.upload-item {
+  margin-bottom: 10px;
+}
+
+.upload-status-container .cancel-button img{
+  width: 20px;
+  height: 20px;
+}

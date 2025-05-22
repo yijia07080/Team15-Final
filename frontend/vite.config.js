@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       '/login': 'http://backend:8000', // 用 backend 取代 localhost，docker跑得起來
       '/static': 'http://backend:8000',
+      '/api/upload': 'http://backend:8000',
     },
   }
 });
