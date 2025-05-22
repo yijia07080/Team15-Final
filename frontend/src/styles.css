@@ -225,3 +225,35 @@ a:visited {
 .btn-dark:hover {
   background-color: #23272b;
 }
+
+.bookmark-item.drag-over {
+  background-color: rgba(33, 150, 243, 0.2);
+  border: 2px dashed #2196f3;
+}
+
+.tag-card:active {
+  cursor: grabbing;
+}
+
+.tag-card {
+  cursor: grab;
+}
+
+.upload-status-container {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  width: 250px;
+  background: #333;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.upload-item {
+  margin-bottom: 10px;
+}
+
+.upload-status-container .cancel-button img{
+  width: 20px;
+  height: 20px;
+}

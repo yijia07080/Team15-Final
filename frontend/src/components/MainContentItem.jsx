@@ -14,6 +14,15 @@ const MainContentItem = ({
       // 點擊 bin
       e.preventDefault();
       onDeleteBookmark(bookmark.id);
+    } else if (e.target.name === "download") {
+      // 透過後端下載連結下載檔案
+      e.preventDefault();
+
+      const downloadLink = document.createElement("a");
+      downloadLink.href = "http://localhost:3000/file/" + bookmark.id;  // 尚未確定
+      downloadLink.download = bookmark.name;
+      downloadLink.click();
+
     } else if (e.target.name === "star") {
       // 點擊 star
       e.preventDefault();
@@ -25,10 +34,7 @@ const MainContentItem = ({
     }
   };
   return (
-    <a
-      href={bookmark.url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
       className="tag-card"
       onClick={handleClick}
     >
@@ -39,6 +45,7 @@ const MainContentItem = ({
           name="star"
         /> */}
         <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
+        <img src={imageMap["download.png"]} alt="Download Icon" name="download" />
       </div>
       <div className="title">
         <img src={imageMap[bookmark.img]} alt={bookmark.name} />
@@ -51,7 +58,7 @@ const MainContentItem = ({
           </span>
         ))}
       </div>
-    </a>
+    </div>
   );
 };
 

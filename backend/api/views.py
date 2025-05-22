@@ -6,6 +6,8 @@ from django.shortcuts import render, redirect
 from django.core.cache import cache
 from django.conf import settings
 from datetime import datetime
+from pathlib import Path
+import tempfile
 import subprocess
 import requests
 import logging
@@ -15,6 +17,44 @@ import os
 import re
 
 logger = logging.getLogger(__name__)
+
+file_temp_dir = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
+if not file_temp_dir.exists():
+    file_temp_dir.mkdir(parents=True, exist_ok=True)
+
+@csrf_exempt
+def upload_file(request):
+    """
+    API for uploading files.
+    request should be form-data and include:
+    - file: the file to upload
+    - new_bookmark: the bookmark item to upload
+    - parent_id: the parent bookmark id
+
+    returns:
+    {
+        id: {...new bookmark data...},
+    }
+    """
+    if request.method == "POST":
+        file = request.FILES.get("file")
+        new_bookmark = request.POST.get("new_bookmark")
+        parent_id = request.POST.get("parent_id")
+        
+        if file:
+            with open(file_temp_dir / file.name, "wb+") as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+
+            # TODO: check new_bookmark and parent_id
+            new_bookmark = json.loads(new_bookmark)
+            
+            return JsonResponse({"status": "success", "message": "File uploaded successfully"}, status=200)
+        else:
+            return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
+
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
 
 @csrf_exempt
 # @login_required # 強迫使用者登入 (登入功能完成後需啟用)

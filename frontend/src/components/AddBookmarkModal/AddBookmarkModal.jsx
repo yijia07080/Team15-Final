@@ -32,7 +32,7 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
       used_size: usedSize,
     };
 
-    bookmarksTree.addBookmark(newBookmark);
+    bookmarksTree.addBookmark(newBookmark, file);
     onClose();
   };
 
