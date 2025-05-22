@@ -139,7 +139,7 @@ class BookmarksTree {
     this.currentNode = id;
     this.onUpdate();
   }
-
+  
   // 拖曳item到group
   moveItemToGroup(itemId, groupId) {
     // 確保item和群組都存在
@@ -150,7 +150,7 @@ class BookmarksTree {
 
     // 確保目標是群組
     const targetFolder = this.idToBookmark[groupId];
-    if (targetFolder.metadata.file_type !== "group") {
+    if (targetFolder.metadata.file_type !== "group" && targetFolder.metadata.file_type !== "root") {
       console.error(`Target with id ${groupId} is not a folder.`);
       return;
     }

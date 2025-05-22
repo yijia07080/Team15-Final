@@ -33,10 +33,21 @@ const MainContentItem = ({
       onMoveToFolder(bookmark.id);
     }
   };
+  // 處理拖曳開始事件
+  const handleDragStart = (e) => {
+    // 設置要傳輸的數據 (項目ID)
+    e.dataTransfer.setData("text/plain", bookmark.id);
+    // 設置拖曳效果
+    e.dataTransfer.effectAllowed = "move";
+  };
   return (
     <div
+      target="_blank"
+      rel="noopener noreferrer"
       className="tag-card"
       onClick={handleClick}
+      draggable="true"
+      onDragStart={handleDragStart}
     >
       <div className="hidden-setting">
         {/* <img

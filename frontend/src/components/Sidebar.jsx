@@ -27,10 +27,13 @@ const Sidebar = () => {
     // bookmarksTree.filterBookmarksByTags([]); // 清空篩選標籤
     bookmarksTree.moveToFolder(id);
   };
-
+  const handleMoveItemToGroup = (itemId, folderId) => {
+    bookmarksTree.moveItemToGroup(itemId, folderId);
+  };
    return (
     <div className="sidebar d-none d-lg-block">
-      <HomeItem onMoveToFolder={handleMoveToFolder} />
+      <HomeItem onMoveToFolder={handleMoveToFolder} onMoveItemToGroup={handleMoveItemToGroup} />
+
       
       {folders.map((folder) => (
         <SidebarItem
@@ -38,6 +41,7 @@ const Sidebar = () => {
           item={folder}
           onMoveToFolder={handleMoveToFolder}
           onDeleteBookmark={handleDeleteBookmark}
+          onMoveItemToGroup={handleMoveItemToGroup}
         />
       ))}
     </div>
