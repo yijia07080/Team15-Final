@@ -21,7 +21,13 @@ body {
   height: 100vh;
 }
 
-.sidebar div {
+.sidebar .bookmark-item {
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+}
+
+.sidebar .hidden-setting {
   width: 100%;
   height: auto;
   border-radius: 5px;

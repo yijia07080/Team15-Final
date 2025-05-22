@@ -327,6 +327,16 @@ class BookmarksTree {
     this.onUpdate();
   }
 
+  addProivder() {
+    // TODO: implement add provider
+    // open new window oauth 2.0 
+    // => oauth success and redirect to backend
+    // => backend save provider info
+    // => backend redirect to another frontend page
+    // => frontend post message to main frontend window notify success
+    // => main frontend window request new provider info from backend
+  }
+
   // 遞迴刪除 node id 以下的所有節點(含自身)，並通知 React 更新
   deleteBookmark(id) {
     const _deleteBookmark = (node_id) => {
@@ -350,6 +360,19 @@ class BookmarksTree {
     this.onUpdate();
   }
 
+    removeSpaceProvider(id, provider) {
+    const bookmark = this.idToBookmark[id];
+    if (bookmark.metadata.file_type !== "group") {
+      throw new Error("Only group bookmarks can have space providers.");
+    }
+
+    // TODO: 告知後端刪除 provider
+
+    bookmark.metadata.spaceProviders = bookmark.metadata.spaceProviders.filter(
+      (p) => p.name !== provider.name,
+    );
+  }
+  
   // 根據你傳入的標籤，對網頁渲染
   filterBookmarksByTags(tags) {
     this.currentFilterTags = tags;

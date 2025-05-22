@@ -1,7 +1,7 @@
 export const treeStructure = {
   0: { parent_id: null, children_id: [1, 2, 3] },     // home
-  1: { parent_id: 0, children_id: [4] },         // 原 id=0 -> 群組1
-  2: { parent_id: 0, children_id: [] },               // 原 id=1 -> 履歷.pdf
+  1: { parent_id: 0, children_id: [4, 2] },         // 原 id=0 -> 群組1
+  2: { parent_id: 1, children_id: [] },               // 原 id=1 -> 履歷.pdf
   3: { parent_id: 0, children_id: [5] },              // 原 id=4 -> 群組2
   4: { parent_id: 1, children_id: [6] },               // 原 id=2 -> photo backup
   5: { parent_id: 3, children_id: [] },               // 原 id=5 -> test.txt
@@ -33,6 +33,19 @@ export const idToFile = {
       last_modified: "2025-04-07T02:06:22.107Z",
       file_type: "group",
       used_size: 2478080,
+      total_size: 20000000,
+      spaceProviders: [
+        {
+          name: "a@example.com",
+          picture: "",
+          total_size: 10000000,
+        },
+        {
+          name: "b@example.com",
+          picture: "",
+          total_size: 10000000,
+        },
+      ]
     },
   },
   2: {
@@ -60,6 +73,18 @@ export const idToFile = {
       file_type: "group",
       used_size: 100,
       total_size: 20000000,
+      spaceProviders: [
+        {
+          name: "c@example.com",
+          picture: "",
+          total_size: 10000000,
+        },
+        {
+          name: "d@example.com",
+          picture: "",
+          total_size: 10000000,
+        },
+      ]
     },
   },
   4: {

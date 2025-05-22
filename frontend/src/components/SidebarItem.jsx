@@ -1,3 +1,5 @@
+import { useState } from "react";
+import GroupSettingModal from "./GroupSettingModal/GroupSettingModal";
 import imageMap from "../utils/imageMap";
 
 
@@ -49,6 +51,11 @@ const HomeItem = ({ item, onMoveToFolder, onMoveItemToGroup }) => {
 };
 
 const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onMoveItemToGroup }) => {
+  const [showGroupSettingModal, setShowGroupSettingModal] = useState(false);
+  const handleGroupSettingClick = () => {
+    setShowGroupSettingModal(true);
+  }
+
   const handleClick = (e) => {
     if (e.target.name === "star") {
       // 點擊 star
@@ -58,6 +65,10 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onM
       // 點擊刪除
       e.preventDefault();
       onDeleteBookmark && onDeleteBookmark(item.id);
+    } else if (e.target.name === "edit") {
+      // 點擊編輯
+      e.preventDefault();
+      handleGroupSettingClick();
     } else if (item.url === "#") {
       // 點擊資料夾
       e.preventDefault();
@@ -106,11 +117,18 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onM
         </div>
         <div className="hidden-setting">
           <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
+          <img src={imageMap["edit.png"]} alt="Edit Icon" name="edit" />
         </div>
         {/* <div className="hidden-setting">
           <img src={imageMap["full_star.png"]} alt="Star Icon" name="star" />
         </div> */}
       </a>
+      {showGroupSettingModal && (
+        <GroupSettingModal
+          onClose={() => setShowGroupSettingModal(false)}
+          groupId={item.id}
+        />
+      )}
     </div>
   );
 };
