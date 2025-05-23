@@ -223,8 +223,8 @@ img {
 }
 
 .tag-card .hidden-setting img {
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
 }
 
 a:link {
@@ -287,4 +287,16 @@ a:visited {
 .upload-status-container .cancel-button img{
   width: 20px;
   height: 20px;
+}
+
+.dropdown-menu {
+  min-width: 120px;
+  background: #c8c8c8;
+}
+
+.dropdown-menu .dropdown-item {
+  cursor: pointer;
+}
+.dropdown-menu .dropdown-item:hover {
+  background: #ababab;
 }

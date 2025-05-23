@@ -8,7 +8,6 @@ const Sidebar = () => {
   //   .getCurrentChildren()
   //   .filter((item) => item.metadata.file_type === "folder");
 
-
   // 側邊欄位只顯示在root下的資料夾
   const folders = bookmarksTree
     .getRootChildren()
