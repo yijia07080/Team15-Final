@@ -30,6 +30,14 @@ const Sidebar = () => {
   const handleMoveItemToGroup = (itemId, folderId) => {
     bookmarksTree.moveItemToGroup(itemId, folderId);
   };
+
+  const handleAddGroup = () => {
+      bookmarksTree.addGroup({ 
+        name: '新群組', 
+        tags: [] 
+      });
+  }
+
    return (
     <div className="sidebar d-none d-lg-block">
       <HomeItem onMoveToFolder={handleMoveToFolder}/>
@@ -42,7 +50,7 @@ const Sidebar = () => {
           onMoveItemToGroup={handleMoveItemToGroup}
         />
       ))}
-      <AddItem />
+      <AddItem onHandleAddGroup={handleAddGroup} />
     </div>
   );
 };

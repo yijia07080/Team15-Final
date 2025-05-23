@@ -3,7 +3,7 @@ import GroupSettingModal from "./GroupSettingModal/GroupSettingModal";
 import imageMap from "../utils/imageMap";
 
 
-const HomeItem = ({ item, onMoveToFolder }) => {
+const HomeItem = ({ onMoveToFolder }) => {
   // 攔截拖曳事件並取消
   const handleDragStartCapture = e => e.preventDefault();
   return (
@@ -19,15 +19,15 @@ const HomeItem = ({ item, onMoveToFolder }) => {
         }}
       >
         <div className="title">
-          <img src={item ? imageMap[item.img] : imageMap["home.png"]} alt="Home" />
-          <span>{item ? item.name : "Home"}</span>
+          <img src={imageMap["home.png"]} alt="Home" />
+          <span>Home</span>
         </div>
       </a>
     </div>
   );
 };
 
-const AddItem = ({ item }) => {
+const AddItem = ({ onHandleAddGroup }) => {
   // 攔截拖曳事件並取消
   const handleDragStartCapture = e => e.preventDefault();
   return (
@@ -37,7 +37,7 @@ const AddItem = ({ item }) => {
       onDragStartCapture={handleDragStartCapture}
     >
       <div className="btn-add-outer">
-        <div className="btn btn-outline-secondary btn-add">
+        <div className="btn btn-outline-secondary btn-add" onClick={onHandleAddGroup}>
             <div className="title">
               <img src={imageMap["add.png"]} alt="Add" />
               <span>新增群組</span>

@@ -297,6 +297,8 @@ class BookmarksTree {
     if (this.idToBookmark[0] && this.idToBookmark[0].metadata) {
       this.idToBookmark[0].metadata.last_modified = new Date().toISOString();
     }
+    console.log(this.treeStructure);
+    console.log(this.idToBookmark);
     // 通知 React 更新
     this.onUpdate();
   }
