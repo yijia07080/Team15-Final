@@ -285,10 +285,11 @@ class BookmarksTree {
       url: "#",
       img: "group.png",
       tags,
-      hidden: true,
+      hidden: false,
       metadata: {
-        last_modified: new Date().toISOString(),
         file_type: "group", // 群組類型為 root
+        last_modified: new Date().toISOString(),
+        spaceProviders: [],
         used_size: 0,
         total_size: 0, // 預設總大小為 0
       },
@@ -300,6 +301,8 @@ class BookmarksTree {
     if (this.idToBookmark[0] && this.idToBookmark[0].metadata) {
       this.idToBookmark[0].metadata.last_modified = new Date().toISOString();
     }
+    console.log(this.treeStructure);
+    console.log(this.idToBookmark);
     // 通知 React 更新
     this.onUpdate();
   }
@@ -366,7 +369,7 @@ class BookmarksTree {
     this.onUpdate();
   }
 
-    removeSpaceProvider(id, provider) {
+  removeSpaceProvider(id, provider) {
     const bookmark = this.idToBookmark[id];
     if (bookmark.metadata.file_type !== "group") {
       throw new Error("Only group bookmarks can have space providers.");
@@ -411,6 +414,15 @@ class BookmarksTree {
   // 取得現在的標籤篩選狀態
   getCurrentFilterTags() {
     return this.currentFilterTags || [];
+  }
+
+  changeBookmarkName(id, newName) {
+    if (this.idToBookmark[id]) {
+      this.idToBookmark[id].name = newName;
+      this.onUpdate();
+    } else {
+      console.error(`Bookmark with id ${id} does not exist.`);
+    }
   }
 }
 

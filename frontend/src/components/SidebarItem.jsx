@@ -3,7 +3,7 @@ import GroupSettingModal from "./GroupSettingModal/GroupSettingModal";
 import imageMap from "../utils/imageMap";
 
 
-const HomeItem = ({ item, onMoveToFolder, onMoveItemToGroup }) => {
+const HomeItem = ({ onMoveToFolder }) => {
   // 攔截拖曳事件並取消
   const handleDragStartCapture = e => e.preventDefault();
   return (
@@ -19,10 +19,31 @@ const HomeItem = ({ item, onMoveToFolder, onMoveItemToGroup }) => {
         }}
       >
         <div className="title">
-          <img src={item ? imageMap[item.img] : imageMap["home.png"]} alt="Home" />
-          <span>{item ? item.name : "Home"}</span>
+          <img src={imageMap["home.png"]} alt="Home" />
+          <span>Home</span>
         </div>
       </a>
+    </div>
+  );
+};
+
+const AddItem = ({ onHandleAddGroup }) => {
+  // 攔截拖曳事件並取消
+  const handleDragStartCapture = e => e.preventDefault();
+  return (
+    <div 
+      className="bookmark-item"
+      draggable={false}
+      onDragStartCapture={handleDragStartCapture}
+    >
+      <div className="btn-add-outer">
+        <div className="btn btn-outline-secondary btn-add" onClick={onHandleAddGroup}>
+            <div className="title">
+              <img src={imageMap["add.png"]} alt="Add" />
+              <span>新增群組</span>
+            </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -115,4 +136,4 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onM
   );
 };
 
-export { HomeItem, SidebarItem };
+export { HomeItem, AddItem, SidebarItem };

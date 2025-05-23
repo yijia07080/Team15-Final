@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom"; // LOGIN
 import imageMap from "../utils/imageMap";
 import AddBookmarkModal from "./AddBookmarkModal/AddBookmarkModal";
 import AddFolderModal from "./AddFolderModal/AddFolderModal";
-import AddGroupModal from "./AddGroupModal/AddGroupModal";
 import TagFilterModal from "./TagFilterModal/TagFilterModal";
 import BookmarksContext from "../context/BookmarksContext";
 import $ from "jquery";
@@ -128,13 +127,13 @@ const Navbar = () => {
 
           <img src={imageMap["folder.png"]} alt="Add Folder Button" />
         </button>
-        <button
+        {/* <button
           className="btn btn-outline-secondary d-flex align-items-center"
           onClick={handleAddGroupButtonClick}
         >
           <img src={imageMap["group.png"]} alt="Add Group Button" />
           <span>新增群組</span>
-        </button>
+        </button> */}
 
         <div className="d-flex justify-content-center align-items-center gap-2">
           {!isLogin && (
@@ -174,9 +173,9 @@ const Navbar = () => {
       {showFolderModal && (
         <AddFolderModal onClose={() => setShowFolderModal(false)} />
       )}
-      {showGroupModal && (
+      {/* {showGroupModal && (
         <AddGroupModal onClose={() => setShowGroupModal(false)} />
-      )}
+      )} */}
       {showTagFilterModal && (
         <TagFilterModal onClose={() => setShowTagFilterModal(false)} />
       )}
