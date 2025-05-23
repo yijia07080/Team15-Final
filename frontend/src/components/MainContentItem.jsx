@@ -5,7 +5,9 @@ const MainContentItem = ({
   onToggleStar,
   onMoveToFolder,
   onDeleteBookmark,
+  onMoveItemToGroup,
 }) => {
+  
   const handleClick = (e) => {
     if (e.target.matches(".tags span")) {
       // 點擊 tag
@@ -40,6 +42,37 @@ const MainContentItem = ({
     // 設置拖曳效果
     e.dataTransfer.effectAllowed = "move";
   };
+
+  // 新增：處理拖曳進入資料夾
+  const handleDragOver = (e) => {
+    // 只有資料夾才能接收拖放的項目
+    if (bookmark.metadata && bookmark.metadata.file_type === "folder") {
+      e.preventDefault(); // 允許放置
+      e.dataTransfer.dropEffect = "move";
+      
+      // 添加視覺反饋
+      e.currentTarget.classList.add("drag-over");
+    }
+  };
+   // 新增：處理拖曳離開資料夾
+  const handleDragLeave = (e) => {
+    // 移除視覺反饋
+    e.currentTarget.classList.remove("drag-over");
+  };
+  
+  // 新增：處理放下項目到資料夾
+  const handleDrop = (e) => {
+    if (bookmark.metadata && bookmark.metadata.file_type === "folder") {
+      e.preventDefault();
+      e.currentTarget.classList.remove("drag-over"); // 移除視覺反饋
+      
+      // 獲取被拖動項目的ID
+      const draggedItemId = e.dataTransfer.getData("text/plain");
+      if (draggedItemId && onMoveItemToGroup) {
+        onMoveItemToGroup(parseInt(draggedItemId), bookmark.id);
+      }
+    }
+  };
   return (
     <div
       target="_blank"
@@ -48,6 +81,9 @@ const MainContentItem = ({
       onClick={handleClick}
       draggable="true"
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <div className="hidden-setting">
         {/* <img

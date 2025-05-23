@@ -15,6 +15,9 @@ const MainContent = () => {
   const handleDeleteBookmark = (id) => {
     bookmarksTree.deleteBookmark(id);
   };
+  const handleMoveItemToGroup = (itemId, folderId) => {
+    bookmarksTree.moveItemToGroup(itemId, folderId);
+  };
   return (
     <div className="tag-container">
       {bookmarks.map((bookmark) => {
@@ -26,6 +29,7 @@ const MainContent = () => {
             onToggleStar={handleToggleStar}
             onMoveToFolder={handleMoveToFolder}
             onDeleteBookmark={handleDeleteBookmark}
+            onMoveItemToGroup={handleMoveItemToGroup}
           />
         );
       })}
