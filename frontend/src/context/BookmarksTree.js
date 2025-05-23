@@ -282,10 +282,11 @@ class BookmarksTree {
       url: "#",
       img: "group.png",
       tags,
-      hidden: true,
+      hidden: false,
       metadata: {
-        last_modified: new Date().toISOString(),
         file_type: "group", // 群組類型為 root
+        last_modified: new Date().toISOString(),
+        spaceProviders: [],
         used_size: 0,
         total_size: 0, // 預設總大小為 0
       },
