@@ -7,7 +7,7 @@ class Bookmarks(models.Model):
     cause django can't use composite primary key, use default primary key (id)
     '''
     account = models.ForeignKey('User', on_delete=models.CASCADE, related_name='bookmarks')
-    bid = models.BigIntegerField(unique=True)
+    bid = models.BigIntegerField()
     url = models.CharField(max_length=2000)
     img = models.CharField(max_length=500, blank=True)
     name = models.CharField(max_length=200)
@@ -42,5 +42,5 @@ class Provider(models.Model):
     provider_account = models.EmailField(max_length=254)
     provider_name = models.CharField(max_length=200)
     provider_picture = models.URLField(blank=True)
-    access_token = models.CharField(max_length=200, blank=True)
+    access_token = models.TextField(blank=True)
     
