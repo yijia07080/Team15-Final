@@ -7,7 +7,15 @@ const MainContentItem = ({
   onDeleteBookmark,
   onMoveItemToGroup,
 }) => {
-  
+
+  // 攔截 group 的拖曳事件並取消
+  const isGroup = bookmark.metadata?.file_type === "group";
+  const handleDragStartCapture = (e) => {
+    if (isGroup) {
+      e.preventDefault();
+    }
+  };
+
   const handleClick = (e) => {
     if (e.target.matches(".tags span")) {
       // 點擊 tag
@@ -73,13 +81,15 @@ const MainContentItem = ({
       }
     }
   };
+
   return (
     <div
       target="_blank"
       rel="noopener noreferrer"
       className="tag-card"
       onClick={handleClick}
-      draggable="true"
+      draggable={!isGroup}
+      onDragStartCapture={handleDragStartCapture}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

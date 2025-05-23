@@ -125,6 +125,7 @@ body {
   display: flex;
   gap: 5px;
   margin-top: 10px;
+  min-height: 20.39px;
 }
 
 .tag-card .title img {

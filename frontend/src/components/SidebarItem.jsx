@@ -4,36 +4,13 @@ import imageMap from "../utils/imageMap";
 
 
 const HomeItem = ({ item, onMoveToFolder, onMoveItemToGroup }) => {
-  const handleDragOver = (e) => {
-    // 允許放置
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    // 添加視覺反饋
-    e.currentTarget.classList.add("drag-over");
-  };
-  
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove("drag-over"); // 移除視覺反饋
-    
-    // 獲取被拖動項目的ID
-    const draggedItemId = e.dataTransfer.getData("text/plain");
-    if (draggedItemId && onMoveItemToGroup) {
-      onMoveItemToGroup(parseInt(draggedItemId), 0); // 使用 0 作為根目錄 ID
-    }
-  };
-
-  const handleDragLeave = (e) => {
-    // 移除視覺反饋
-    e.currentTarget.classList.remove("drag-over");
-  };
-
+  // 攔截拖曳事件並取消
+  const handleDragStartCapture = e => e.preventDefault();
   return (
     <div 
       className="bookmark-item"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      draggable={false}
+      onDragStartCapture={handleDragStartCapture}
     >
       <a
         onClick={(e) => {
@@ -51,6 +28,9 @@ const HomeItem = ({ item, onMoveToFolder, onMoveItemToGroup }) => {
 };
 
 const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onMoveItemToGroup }) => {
+  // 攔截拖曳事件並取消
+  const handleDragStartCapture = e => e.preventDefault();
+
   const [showGroupSettingModal, setShowGroupSettingModal] = useState(false);
   const handleGroupSettingClick = () => {
     setShowGroupSettingModal(true);
@@ -101,6 +81,8 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onM
   return (
      <div 
       className="bookmark-item"
+      draggable={false}
+      onDragStartCapture={handleDragStartCapture}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
