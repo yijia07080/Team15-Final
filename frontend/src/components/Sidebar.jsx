@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { HomeItem, SidebarItem } from "./SidebarItem";
+import { HomeItem, AddItem, SidebarItem } from "./SidebarItem";
 import BookmarksContext from "../context/BookmarksContext";
 
 const Sidebar = () => {
@@ -32,9 +32,7 @@ const Sidebar = () => {
   };
    return (
     <div className="sidebar d-none d-lg-block">
-      <HomeItem onMoveToFolder={handleMoveToFolder} onMoveItemToGroup={handleMoveItemToGroup} />
-
-      
+      <HomeItem onMoveToFolder={handleMoveToFolder}/>
       {folders.map((folder) => (
         <SidebarItem
           key={folder.id}
@@ -44,6 +42,7 @@ const Sidebar = () => {
           onMoveItemToGroup={handleMoveItemToGroup}
         />
       ))}
+      <AddItem />
     </div>
   );
 };

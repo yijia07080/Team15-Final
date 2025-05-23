@@ -363,7 +363,7 @@ class BookmarksTree {
     this.onUpdate();
   }
 
-    removeSpaceProvider(id, provider) {
+  removeSpaceProvider(id, provider) {
     const bookmark = this.idToBookmark[id];
     if (bookmark.metadata.file_type !== "group") {
       throw new Error("Only group bookmarks can have space providers.");
@@ -408,6 +408,15 @@ class BookmarksTree {
   // 取得現在的標籤篩選狀態
   getCurrentFilterTags() {
     return this.currentFilterTags || [];
+  }
+
+  changeBookmarkName(id, newName) {
+    if (this.idToBookmark[id]) {
+      this.idToBookmark[id].name = newName;
+      this.onUpdate();
+    } else {
+      console.error(`Bookmark with id ${id} does not exist.`);
+    }
   }
 }
 

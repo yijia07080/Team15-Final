@@ -40,6 +40,11 @@ const GroupSettingModal = ({ onClose, groupId }) => {
     ].join('')
     window.location.href = authUrl
   };
+  
+  const handleNameChange = e => {
+    const newName = e.target.value;
+    bookmarksTree.changeBookmarkName(groupId, newName);
+  };
 
     const group = bookmarksTree.idToBookmark[groupId];
     if (group.metadata.file_type !== "group") {
@@ -49,7 +54,12 @@ const GroupSettingModal = ({ onClose, groupId }) => {
     return (
         <div className={styles["modal"]} onClick={handleBackdropClick}>
             <div className={styles["modal-content"]} onClick={stopBackdropClick}>
-                <h2>{group.name}</h2>
+                <input
+                type="text"
+                defaultValue={group.name}
+                onChange={handleNameChange}
+                className={styles['h2-input']}
+                />
                 <div className={styles["group-info"]}>
                     <p>群組大小: {HummanReadableSize(group.metadata.used_size)} / {HummanReadableSize(group.metadata.total_size)}</p>
                     <div className={styles["providers-container"]}>

@@ -58,3 +58,18 @@
 .modal-content .provider:hover > .hidden-setting {
   opacity: 1;
 }
+
+.h2-input {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: transparent;
+  /* width: 100%; */
+  padding: 5px 10px;
+  margin-bottom: 10px;
+}
+.h2-input:focus {
+  outline: none;
+}
