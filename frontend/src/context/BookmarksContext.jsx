@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useRef } from "react";
 import UploadContext from '../context/UploadContext';
 import BookmarksTree from "./BookmarksTree.js";
-import { treeStructure, idToFile } from "../utils/tempDB.js";
+import { treeStructure, idToBookmark, userInfo } from "../utils/init.js";
 
 const BookmarksContext = createContext();
 
@@ -9,7 +9,7 @@ export function BookmarksProvider({ children }) {
   const [, forceUpdate] = useState(0);
   const { uploadStatus } = useContext(UploadContext);
   const bookmarksTreeRef = useRef(
-    new BookmarksTree(treeStructure, idToFile, uploadStatus, () => {
+    new BookmarksTree(userInfo, treeStructure, idToBookmark, uploadStatus, () => {
       forceUpdate((n) => n + 1);
     }),
   );

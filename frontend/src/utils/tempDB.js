@@ -1,5 +1,11 @@
+export const userInfo = {
+  'username': 'admin',
+  'name':     'testuser',
+  'picture':  '',
+}
+
 export const treeStructure = {
-  0: { parent_id: null, children_id: [1, 2, 3] },     // home
+  0: { parent_id: null, children_id: [1, 3] },     // home
   1: { parent_id: 0, children_id: [4, 2] },         // 原 id=0 -> 群組1
   2: { parent_id: 1, children_id: [] },               // 原 id=1 -> 履歷.pdf
   3: { parent_id: 0, children_id: [5] },              // 原 id=4 -> 群組2

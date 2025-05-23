@@ -11,14 +11,26 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
-import environ
 from pathlib import Path
+import environ
 
 # 讀取環境變數 (.env)
 env = environ.Env()
 CLIENT_ID = env("CLIENT_ID")
 CLIENT_SECRET = env("CLIENT_SECRET")
 REDIRECT_URI = env("REDIRECT_URI")
+RECAPTCHA_SECRETKEY = env("RECAPTCHA_SECRETKEY")
+RECAPTCHA_SITEKEY = env("RECAPTCHA_SITEKEY")
+RECAPTCHA_URL = env("RECAPTCHA_URL")
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com' 
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env("EMAIL_HOST_USER") 
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")  
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -53,7 +65,6 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -182,30 +193,16 @@ print("BASE_DIR:", BASE_DIR)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'detailed': {
-            'format': '[{levelname}] {asctime} {name}:{lineno} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'detailed',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'api.views': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-    },
-}
+''' 
+登入狀態設定 (為了讓登入狀態可以透過 HttpOnly Cookie 保存)
+'''
+# Session 存活 7 天（秒）
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
+# 關閉瀏覽器不刪除 session
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+# 只允許 HTTP 傳送，JavaScript 無法存取
+SESSION_COOKIE_HTTPONLY = True
+# 開發時如非 HTTPS，可先設 False；正式環境務必設 True
+SESSION_COOKIE_SECURE = False
+# SameSite 可用 'Lax' 或 'Strict'
+SESSION_COOKIE_SAMESITE = 'Lax'

@@ -1,5 +1,8 @@
 class BookmarksTree {
-  constructor(treeStructure = null, idToBookmark = null, uploadStatusContext, onUpdate) {
+  constructor(userInfo, treeStructure = null, idToBookmark = null, uploadStatusContext, onUpdate) {
+    // 紀錄用戶名稱，訪客為 admin
+    this.userInfo = userInfo;
+    // uploadContext
     this.uploadStatus = uploadStatusContext;
     // 以 map 紀錄樹狀結構：node id -> { parent_id, children_id }
     this.treeStructure = { 0: { parent_id: null, children_id: [] } };

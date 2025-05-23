@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from api.views import get_csrf, bookmarks_init_api, bookmarks_update_api, bookmarks_delete_api, login_view, oauth2callback, upload_file
+from api.views import get_csrf, bookmarks_init_api, login_view, oauth2callback, upload_file, logout_view, set_password, forgot_password, reset_password
 
 urlpatterns = [
     path('api/upload', upload_file, name='upload_file'),
@@ -24,9 +24,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/get_csrf', get_csrf, name='get_csrf'),
     path('api/bookmarks/init', bookmarks_init_api, name='bookmarks_init_api'),
-    path('api/bookmarks/update/<int:bid>', bookmarks_update_api, name='bookmarks_update_api'),
-    path('api/bookmarks/delete/<int:bid>', bookmarks_delete_api, name='bookmarks_delete_api'),
     
     path('login/', login_view, name='login'),
-    path('oauth2callback/', oauth2callback, name='oauth2callback')
+    path('logout/', logout_view, name='logout'),
+    path('oauth2callback/', oauth2callback, name='oauth2callback'),
+    path('password/', set_password, name='password'),
+    path('forgot-password/', forgot_password, name='forgot_password'),
+    path('reset-password/<str:token>/', reset_password, name='reset_password'),
 ]

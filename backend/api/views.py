@@ -1,11 +1,16 @@
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, HttpResponseBadRequest
-from .models import Bookmarks, TreeStructure, User
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.core.cache import cache
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.http import HttpResponse
 from django.conf import settings
-from datetime import datetime
+from .models import Bookmarks, TreeStructure, User, Provider
+import secrets
+from datetime import datetime, timedelta
 from pathlib import Path
 import tempfile
 import subprocess
@@ -18,11 +23,97 @@ import re
 
 logger = logging.getLogger(__name__)
 
-file_temp_dir = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
-if not file_temp_dir.exists():
-    file_temp_dir.mkdir(parents=True, exist_ok=True)
+temp_dir = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
+if not temp_dir.exists():
+    temp_dir.mkdir(parents=True, exist_ok=True)
 
-@csrf_exempt
+password_reset_tokens = {}
+
+@ensure_csrf_cookie
+def get_csrf(request):
+    """
+    Returns the CSRF token for the current session.
+    """
+    return JsonResponse({"status": "success"})
+
+def forgot_password(request):
+    """處理忘記密碼請求"""
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(account=email)
+            
+            token = secrets.token_urlsafe(32)
+            
+            password_reset_tokens[token] = {
+                'user': user.account,
+                'expires': datetime.now() + timedelta(hours=1)  # 令牌有效期為1小時
+            }
+            
+            frontend_url = "http://localhost:5174"
+            reset_link = f"{frontend_url}/reset-password/{token}/"
+            
+            subject = '重設您的密碼'
+            message = f'''
+            您好，
+
+            我們收到了重設您密碼的請求。請點擊以下連結來重設密碼：
+            
+            {reset_link}
+            
+            此連結將在一小時後失效。如果您並未請求重設密碼，請忽略此郵件。
+
+            NTU Team15網站團隊
+            '''
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            
+            return render(request, 'forgot_password.html', {
+                'success': '重設密碼的連結已發送到您的郵箱，請查收。(如果沒有收到請檢查垃圾郵件或是重新寄送)'
+            })
+            
+        except User.DoesNotExist:
+            return render(request, 'forgot_password.html', {
+                'error': '此帳號尚未註冊'
+            })
+    
+    # GET 請求：顯示忘記密碼頁面
+    return render(request, 'forgot_password.html')
+
+
+def reset_password(request, token):
+    """處理密碼重設"""
+    if token not in password_reset_tokens or datetime.now() > password_reset_tokens[token]['expires']:
+        return render(request, 'reset_password.html', {
+            'error': '密碼重設連結無效或已過期。請重新申請。'
+        })
+    
+    if request.method == 'POST':
+        new_pw = request.POST.get('new_password')
+        confirm_pw = request.POST.get('confirm_password')
+        
+        if new_pw != confirm_pw:
+            return render(request, 'reset_password.html', {
+                'error': '兩次輸入密碼不一致',
+                'token': token
+            })
+        
+        username = password_reset_tokens[token]['user']
+        user = User.objects.get(account=username)
+        user.password = new_pw
+        user.save()
+        
+        del password_reset_tokens[token]
+        
+        return redirect('login')
+    
+    return render(request, 'reset_password.html', {'token': token})
+
 def upload_file(request):
     """
     API for uploading files.
@@ -42,7 +133,7 @@ def upload_file(request):
         parent_id = request.POST.get("parent_id")
         
         if file:
-            with open(file_temp_dir / file.name, "wb+") as destination:
+            with open(temp_dir / file.name, "wb+") as destination:
                 for chunk in file.chunks():
                     destination.write(chunk)
 
@@ -55,41 +146,6 @@ def upload_file(request):
 
     else:
         return JsonResponse({"status": "error", "message": "Invalid request method"}, status=405)
-
-@csrf_exempt
-# @login_required # 強迫使用者登入 (登入功能完成後需啟用)
-def oauth2callback(request):
-    code = request.GET.get('code')
-    if not code:
-        logger.error('Missing code in callback')
-        return HttpResponseBadRequest('Missing code')
-
-    token_resp = requests.post(
-        'https://oauth2.googleapis.com/token',
-        data={
-            'code': code,
-            'client_id': settings.CLIENT_ID,
-            'client_secret': settings.CLIENT_SECRET,
-            'redirect_uri': settings.REDIRECT_URI,
-            'grant_type': 'authorization_code'
-        }
-    )
-
-    if token_resp.status_code != 200:
-        logger.error('Token exchange failed: %s', token_resp.text)
-        return HttpResponseBadRequest('Token exchange failed')
-
-    token = token_resp.json()
-    logger.info('Obtained token: %s', token)
-
-    user = request.user if request.user.is_authenticated else None
-    user_id = getattr(user, 'id', 'anonymous')
-    logger.info('Current user id: %s', user_id)
-
-    # … 這裡放 rclone config create 等程式 …
-
-    return redirect('http://localhost:5174/')
-
 
 # Request rate limit
 def rate_limit(view_func):
@@ -106,328 +162,382 @@ def rate_limit(view_func):
         return view_func(request, *args, **kwargs)
     return wrapped_view
 
-# XSS Protection - Sanitize function for strings
-def sanitize_string(value):
-    """
-    Sanitizes a string value to prevent XSS attacks.
-    Escapes HTML special characters and removes script tags.
-    """
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        return value
+# # XSS Protection - Sanitize function for strings
+# def sanitize_string(value):
+#     """
+#     Sanitizes a string value to prevent XSS attacks.
+#     Escapes HTML special characters and removes script tags.
+#     """
+#     if value is None:
+#         return None
+#     if not isinstance(value, str):
+#         return value
     
-    # Escape HTML special characters
-    value = html.escape(value)
-    # Remove script and event handler patterns
-    value = re.sub(r'<script.*?>.*?</script>', '', value, flags=re.IGNORECASE | re.DOTALL)
-    value = re.sub(r'javascript:', '', value, flags=re.IGNORECASE)
-    value = re.sub(r'on\w+\s*=', '', value, flags=re.IGNORECASE)
+#     # Escape HTML special characters
+#     value = html.escape(value)
+#     # Remove script and event handler patterns
+#     value = re.sub(r'<script.*?>.*?</script>', '', value, flags=re.IGNORECASE | re.DOTALL)
+#     value = re.sub(r'javascript:', '', value, flags=re.IGNORECASE)
+#     value = re.sub(r'on\w+\s*=', '', value, flags=re.IGNORECASE)
     
-    return value
-# XSS Protection - Sanitize function for data structures
-def sanitize_data(data):
-    """
-    Recursively sanitizes data structures to prevent XSS attacks.
-    Handles strings, lists, and dictionaries.
-    """
-    if isinstance(data, str):
-        return sanitize_string(data)
-    elif isinstance(data, list):
-        return [sanitize_data(item) for item in data]
-    elif isinstance(data, dict):
-        return {k: sanitize_data(v) for k, v in data.items()}
-    else:
-        return data
+#     return value
+# # XSS Protection - Sanitize function for data structures
+# def sanitize_data(data):
+#     """
+#     Recursively sanitizes data structures to prevent XSS attacks.
+#     Handles strings, lists, and dictionaries.
+#     """
+#     if isinstance(data, str):
+#         return sanitize_string(data)
+#     elif isinstance(data, list):
+#         return [sanitize_data(item) for item in data]
+#     elif isinstance(data, dict):
+#         return {k: sanitize_data(v) for k, v in data.items()}
+#     else:
+#         return data
 
-# validate bookmark data
-def validate_bookmark_request(data, require_all_fields=False):
-    required_fields = {
-        'time': str,
-        'parent_id': int,
-        'children_id': list,
-        'url': str,
-        'img': str,
-        'name': str,
-        'tags': list,
-        'starred': bool,
-        'hidden': bool
-    }
-    length_limits = {
-        'url': 2048,
-        'img': 2048,
-        'name': 255,
-        'tags': 50,  # 每個標籤的最大長度
-        'tags_count': 10  # 標籤數量上限
-    }
-    if 'url' in data and len(data['url']) > length_limits['url']:
-        return False, JsonResponse({'status': 'error', 'message': f'URL長度不能超過{length_limits["url"]}個字符'}, status=400)
+# # validate bookmark data
+# def validate_bookmark_request(data, require_all_fields=False):
+#     required_fields = {
+#         'time': str,
+#         'parent_id': int,
+#         'children_id': list,
+#         'url': str,
+#         'img': str,
+#         'name': str,
+#         'tags': list,
+#         'starred': bool,
+#         'hidden': bool
+#     }
+#     length_limits = {
+#         'url': 2048,
+#         'img': 2048,
+#         'name': 255,
+#         'tags': 50,  # 每個標籤的最大長度
+#         'tags_count': 10  # 標籤數量上限
+#     }
+#     if 'url' in data and len(data['url']) > length_limits['url']:
+#         return False, JsonResponse({'status': 'error', 'message': f'URL長度不能超過{length_limits["url"]}個字符'}, status=400)
     
-    if 'img' in data and len(data['img']) > length_limits['img']:
-        return False, JsonResponse({'status': 'error', 'message': f'圖片URL長度不能超過{length_limits["img"]}個字符'}, status=400)
+#     if 'img' in data and len(data['img']) > length_limits['img']:
+#         return False, JsonResponse({'status': 'error', 'message': f'圖片URL長度不能超過{length_limits["img"]}個字符'}, status=400)
     
-    if 'name' in data and len(data['name']) > length_limits['name']:
-        return False, JsonResponse({'status': 'error', 'message': f'名稱長度不能超過{length_limits["name"]}個字符'}, status=400)
+#     if 'name' in data and len(data['name']) > length_limits['name']:
+#         return False, JsonResponse({'status': 'error', 'message': f'名稱長度不能超過{length_limits["name"]}個字符'}, status=400)
     
-    if 'tags' in data:
-        if len(data['tags']) > length_limits['tags_count']:
-            return False, JsonResponse({'status': 'error', 'message': f'標籤數量不能超過{length_limits["tags_count"]}個'}, status=400)
-        for tag in data['tags']:
-            if len(tag) > length_limits['tags']:
-                return False, JsonResponse({'status': 'error', 'message': f'每個標籤長度不能超過{length_limits["tags"]}個字符'}, status=400)
+#     if 'tags' in data:
+#         if len(data['tags']) > length_limits['tags_count']:
+#             return False, JsonResponse({'status': 'error', 'message': f'標籤數量不能超過{length_limits["tags_count"]}個'}, status=400)
+#         for tag in data['tags']:
+#             if len(tag) > length_limits['tags']:
+#                 return False, JsonResponse({'status': 'error', 'message': f'每個標籤長度不能超過{length_limits["tags"]}個字符'}, status=400)
 
-    validated = {}
+#     validated = {}
 
-    unknown_keys = set(data.keys()) - set(required_fields.keys())
-    if unknown_keys:
-        return False, JsonResponse({'status': 'error', 'message': f'Unknown fields: {list(unknown_keys)}'}, status=400)
+#     unknown_keys = set(data.keys()) - set(required_fields.keys())
+#     if unknown_keys:
+#         return False, JsonResponse({'status': 'error', 'message': f'Unknown fields: {list(unknown_keys)}'}, status=400)
 
-    for key, expected_type in required_fields.items():
-        value = data.get(key)
+#     for key, expected_type in required_fields.items():
+#         value = data.get(key)
 
-        if require_all_fields and value is None:
-            return False, JsonResponse({'status': 'error', 'message': f'Missing field: {key}'}, status=400)
+#         if require_all_fields and value is None:
+#             return False, JsonResponse({'status': 'error', 'message': f'Missing field: {key}'}, status=400)
 
-        if value is not None:
-            if expected_type == int and not isinstance(value, int):
-                return False, JsonResponse({'status': 'error', 'message': f'{key} must be an integer'}, status=400)
-            if expected_type == str and not isinstance(value, str):
-                return False, JsonResponse({'status': 'error', 'message': f'{key} must be a string'}, status=400)
-            if expected_type == bool and not isinstance(value, bool):
-                return False, JsonResponse({'status': 'error', 'message': f'{key} must be a boolean'}, status=400)
-            if expected_type == list and not isinstance(value, list):
-                return False, JsonResponse({'status': 'error', 'message': f'{key} must be a list'}, status=400)
+#         if value is not None:
+#             if expected_type == int and not isinstance(value, int):
+#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be an integer'}, status=400)
+#             if expected_type == str and not isinstance(value, str):
+#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be a string'}, status=400)
+#             if expected_type == bool and not isinstance(value, bool):
+#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be a boolean'}, status=400)
+#             if expected_type == list and not isinstance(value, list):
+#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be a list'}, status=400)
 
-            if key == 'tags':
-                if not all(isinstance(tag, str) for tag in value):
-                    return False, JsonResponse({'status': 'error', 'message': 'Each tag must be a string'}, status=400)
-            if key == 'children_id':
-                if not all(isinstance(cid, int) for cid in value):
-                    return False, JsonResponse({'status': 'error', 'message': 'Each children_id must be an integer'}, status=400)
-            validated[key] = value
-        else:
-            validated[key] = None
+#             if key == 'tags':
+#                 if not all(isinstance(tag, str) for tag in value):
+#                     return False, JsonResponse({'status': 'error', 'message': 'Each tag must be a string'}, status=400)
+#             if key == 'children_id':
+#                 if not all(isinstance(cid, int) for cid in value):
+#                     return False, JsonResponse({'status': 'error', 'message': 'Each children_id must be an integer'}, status=400)
+#             validated[key] = value
+#         else:
+#             validated[key] = None
 
-    return True, validated
+#     return True, validated
 
-# Django template login
 @rate_limit
 def login_view(request):
-    """
-    A login page .
-    """
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        if username == "admin" and password == "password":
-            return HttpResponseRedirect("/")
-        else:
-            return render(request, "login.html", {"error": "Invalid credentials"})
-    return render(request, "login.html")
+    if request.method == 'POST':
+        # 驗證 reCAPTCHA
+        recaptcha_response = request.POST.get('g-recaptcha-response')
+        recaptcha_data = {
+            'secret': settings.RECAPTCHA_SECRETKEY,
+            'response': recaptcha_response,
+            'remoteip': request.META.get('REMOTE_ADDR')
+        }
+        r = requests.post(settings.RECAPTCHA_URL, data=recaptcha_data)
+        result = r.json()
+        if not result.get('success'):
+            return render(request, 'login.html', {
+                'error': 'reCAPTCHA 驗證失敗',
+                'sitekey': settings.RECAPTCHA_SITEKEY
+            })
 
-@ensure_csrf_cookie
-def get_csrf(request):
-    """
-    Returns the CSRF token for the current session.
-    """
-    return JsonResponse({"status": "success"})
+        # 帳號密碼驗證
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        try:
+            user = User.objects.get(account=username, password=password)
+            request.session['name'] = user.name
+            request.session['username'] = user.account
+            request.session['picture'] = user.picture
+            request.session['is_authenticated'] = True
+            request.session.set_expiry(60 * 60 * 24 * 7)
+            return redirect('http://localhost:5174')
+        except User.DoesNotExist:
+            return render(request, 'login.html', {
+                'error': '登入失敗',
+                'sitekey': settings.RECAPTCHA_SITEKEY
+            })
+    
+    # GET 請求：正常顯示登入頁
+    return render(request, 'login.html', {
+        'sitekey': settings.RECAPTCHA_SITEKEY
+    })
+
+@require_POST
+def logout_view(request):
+    request.session.flush()
+    return JsonResponse({'status': 'success'})
+
+def oauth2callback(request):
+    code = request.GET.get('code')
+    token_resp = requests.post(
+        'https://oauth2.googleapis.com/token',
+        data={
+            'code': code,
+            'client_id': settings.CLIENT_ID,
+            'client_secret': settings.CLIENT_SECRET,
+            'redirect_uri': settings.REDIRECT_URI,
+            'grant_type': 'authorization_code'
+        }
+    )
+    tokens = token_resp.json()
+    access_token = tokens.get('access_token')
+    userinfo_resp = requests.get(
+        'https://openidconnect.googleapis.com/v1/userinfo',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+    userinfo = userinfo_resp.json()
+    email = userinfo.get('email')
+    name = userinfo.get('name')
+    picture = userinfo.get('picture')
+
+    try:
+        existing = User.objects.get(account=email)
+        if existing.password:
+            return render(request, 'login.html', {
+                'error': '此帳號已存在，請使用密碼登入',
+                'sitekey': settings.RECAPTCHA_SITEKEY
+            })
+    except User.DoesNotExist:
+        pass
+
+    '''
+    initialize database
+    User
+    Provider:
+        註冊google作為provider
+    bookmark:
+        root id 0
+        group id 1 (使用註冊google作為這個group的provider)
+    '''
+    user, created = User.objects.update_or_create(
+        account=email,
+        defaults={'name': name, 'picture': picture, 'password': ''}
+    )
+    provider, created = Provider.objects.update_or_create(
+        account=user,
+        defaults={
+            'provider_account': email,
+            'provider_name': name,
+            'provider_picture': picture,
+            'access_token': access_token
+        }
+    )
+    root, bm_created = Bookmarks.objects.get_or_create(
+        bid=0,
+        account=user,
+        defaults={
+            'url': '#',
+            'img': 'folder.png',
+            'name': 'Home',
+            'tags': [],
+            'hidden': True,
+            'last_modified': datetime.now().isoformat(),
+            'file_type': "root",
+        }
+    )
+    group, group_created = Bookmarks.objects.get_or_create(
+        bid=1,
+        account=user,
+        defaults={
+            'url': '#',
+            'img': 'group.png',
+            'name': '群組1',
+            'tags': [],
+            'hidden': True,
+            'last_modified': datetime.now().isoformat(),
+            'file_type': "group",
+            'space_providers': [provider.provider_account],
+            'used_size': 0,
+        }
+    )
+    tree, ts_created = TreeStructure.objects.update_or_create(
+        account=user,
+        bid=root,
+        defaults={'parent_id': None, 'children_id': [group.bid]}
+    )
+    gtree, ts_created = TreeStructure.objects.update_or_create(
+        account=user,
+        bid=group,
+        defaults={'parent_id': 0, 'children_id': []}
+    )
+
+    request.session['name'] = name
+    request.session['username'] = email
+    request.session['picture'] = picture
+    request.session['is_authenticated'] = False
+    request.session.set_expiry(60 * 60 * 24 * 7)
+    return render(request, 'password.html')
+
+def set_password(request):
+    if request.method == 'POST':
+        new_pw = request.POST.get('new_password')
+        confirm_pw = request.POST.get('confirm_password')
+        if new_pw != confirm_pw:
+            return render(request, 'password.html', {'error': '兩次輸入密碼不一致'})
+        username = request.session.get('username')
+        user = User.objects.get(account=username)
+        user.password = new_pw
+        user.save()
+        request.session['is_authenticated'] = True
+        return redirect('http://localhost:5174')
+    return render(request, 'password.html')
 
 def bookmarks_init_api(request):
     '''
     returns JSON:
     {
-        'databaseStatus': {
-            'lastUpdated': '2025-04-07T02:06:22.107Z'
+        'userInfo': {
+            'username': 'a@example.com',
+            'name':     'example',
+            'picture':  '',
         },
         'idToBookmark': {
             0: {
-                'bid': 0,
-                'url': 'URL',
-                'img': 'IMAGE URL',
-                'name': 'NAME',
-                'tags': ['TAG1', 'TAG2'],
-                'starred': true,
-                'hidden': false
-            },
+                id : 0,
+                url: "#",
+                img: "folder.png",
+                name: "home",
+                tags: [],
+                hidden: true,
+                metadata: {
+                    last_modified: "2025-04-07T02:06:22.107Z",
+                    file_type: "root", 
+                    used_size: 2600880,
+                    
+                    // only for file_type = "group"
+                    total_size: 10000000,
+                    spaceProviders: [
+                        {
+                        name: "a@example.com",
+                        picture: "",
+                        total_size: 10000000,
+                        },
+                    ]
+                }
+            }, 
             ...
         },
         'treeStructure': {
-            0: { parent_id: null, children_id: [1, 2, ...] },
-            1: { parent_id: 0, children_id: [] },
+            0: {
+                parent_id: None,
+                children_id: [1, 2, ...]
+            },
+            1: {
+                parent_id: 0,
+                children_id: []
+            },
             ...
         }
     }
     '''
     if request.method == 'GET':
         return JsonResponse({'status': 'error', 'message': 'GET method not allowed'}, status=405)
-
-    account = 'admin'  # TODO: get from request
+    
+    # 如果 session 過期或未登入（從註冊中跳出），則清除 session
+    is_authenticated = request.session.get('is_authenticated', False)
+    if not is_authenticated:
+        request.session.flush()
+    
+    account = request.session.get('username', 'admin')
+    name = request.session.get('name', 'default')
+    picture = request.session.get('picture', '')
 
     user = User.objects.get(account=account)
     bookmarks = user.bookmarks.all()
-    tree_structure = user.tree_structure.all()
+    tree_qs   = user.tree_structure.all()
+
+    # TODO: ensure data consistency between database and google drive
+
+    ts_map = {
+        ts.bid: {
+            'parent_id':   ts.parent_id,
+            'children_id': ts.children_id,  # 假設是 ArrayField 或 JSONField
+        }
+        for ts in tree_qs
+    }
 
     idToBookmark = {}
-    treeStructure = {}
-    for i in range(len(bookmarks)):
-        bid = bookmarks[i].bid
+    for bm in bookmarks:
+        bid = bm.bid
         idToBookmark[bid] = {
-            'id': bid,
-            'url': sanitize_string(bookmarks[i].url),
-            'img': bookmarks[i].img,
-            'name': sanitize_string(bookmarks[i].name),
-            'tags': sanitize_data(bookmarks[i].tags),
-            'starred': bookmarks[i].starred,
-            'hidden': bookmarks[i].hidden
+            'id':    bid,
+            'url':   bm.url,
+            'img':   bm.img,
+            'name':  bm.name,
+            'tags':  bm.tags,
+            'hidden':  bm.hidden,
+            'metadata': {
+                'last_modified': bm.last_modified.isoformat(),
+                'file_type':     bm.file_type,
+                'used_size':     bm.used_size,
+            }
         }
-        treeStructure[bid] = {
-            'parent_id': tree_structure[i].parent_id,
-            'children_id': tree_structure[i].children_id
-        }
+        
+        if bm.file_type == 'group':
+            provider_objs = Provider.objects.filter(account=user, provider_account__in=bm.space_providers)
+            idToBookmark[bid]['metadata']['total_size'] = 0
+            for provider in provider_objs:
+                idToBookmark[bid]['metadata']['spaceProviders'] = [
+                    {
+                        'name': provider.provider_account,
+                        'picture': provider.provider_picture,
+                        'total_size': 10000000,  # TODO: get real total size from provider
+                    }
+                ]
+                idToBookmark[bid]['metadata']['total_size'] += 10000000
 
     response_data = {
-        'databaseStatus': {
-            'lastUpdated': user.lastUpdated
+        'userInfo': {
+            'username': account,
+            'name':     name,
+            'picture':  picture,
         },
         'idToBookmark': idToBookmark,
-        'treeStructure': treeStructure
+        'treeStructure': ts_map,
     }
-    return JsonResponse(response_data, safe=False)
+    return JsonResponse(response_data)
 
-def bookmarks_update_api(request, bid):
-    '''
-    if bid is existing, update the bookmark
-    else create a new bookmark
-
-    request body:
-        {
-            'time': '2025-04-07T02:06:22.107Z',
-            'parent_id': 0,
-            'children_id': [],
-            'url': 'URL',
-            'img': 'IMAGE URL',
-            'name': 'NAME',
-            'tags': ['TAG1', 'TAG2'],
-            'starred': true,
-            'hidden': false
-        }
-
-    returns JSON: 
-        {'status': 'success'}
-    '''
-    if request.method == 'GET':
-        return JsonResponse({'status': 'error', 'message': 'GET method not allowed'}, status=405)
-
-    # check json
-    try:
-        request_data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    account = 'admin'  # TODO: get from request
-    request_data = json.loads(request.body)
-
-    time = request_data.get('time')
-    if time is None:  # time is required
-        return JsonResponse({'status': 'error', 'message': 'missing time'}, status=400)
-    parent_id = request_data.get('parent_id')
-    children_id = request_data.get('children_id')
-    url = sanitize_string(request_data.get('url'))
-    img = request_data.get('img')
-    name = sanitize_string(request_data.get('name'))
-    tags = sanitize_data(request_data.get('tags'))
-    starred = request_data.get('starred')
-    hidden = request_data.get('hidden')
-
-    user = User.objects.get(account=account)
-    bookmark = Bookmarks.objects.filter(account=user.account, bid=bid)
-    tree_structure = TreeStructure.objects.filter(account=user.account, bid=bid)
-
-    # verify the validity of the data
-    is_new = (len(bookmark) == 0)
-    is_valid, validated = validate_bookmark_request(request_data, require_all_fields=is_new)
-    if not is_valid:
-        return validated
-    
-    if len(bookmark) == 0:  # create a new bookmark
-        # all perperties are required
-        for prop in [parent_id, children_id, url, img, name, tags, starred, hidden]:
-            if prop is None:
-                return JsonResponse({'status': 'error', 'message': 'missing properties'}, status=400)
-
-        bookmark = Bookmarks(
-            account=user,
-            bid=bid,
-            url=url,
-            img=img,
-            name=name,
-            tags=tags,
-            starred=starred,
-            hidden=hidden
-        )
-        tree_structure = TreeStructure(
-            account=user,
-            bid=bookmark,
-            parent_id=parent_id,
-            children_id=children_id
-        )
-        user.lastUpdated = time
-
-        bookmark.save()
-        tree_structure.save()
-        user.save()
-    else: # update the existing bookmark
-        bookmark = bookmark[0]
-        tree_structure = tree_structure[0]
-
-        tree_structure.parent_id = parent_id if parent_id is not None else tree_structure.parent_id
-        tree_structure.children_id = children_id if children_id is not None else tree_structure.children_id
-        bookmark.url = url if url is not None else bookmark.url
-        bookmark.img = img if img is not None else bookmark.img
-        bookmark.name = name if name is not None else bookmark.name
-        bookmark.tags = tags if tags is not None else bookmark.tags
-        bookmark.starred = starred if starred is not None else bookmark.starred
-        bookmark.hidden = hidden if hidden is not None else bookmark.hidden
-        user.lastUpdated = time
-
-        bookmark.save()
-        tree_structure.save()
-        user.save()
-
-    return JsonResponse({'status': 'success'}, status=200)
-
-def bookmarks_delete_api(request, bid):
-    '''
-    delete the bookmark with bid
-
-    request body:
-        {
-            'time': '2025-04-07T02:06:22.107Z'
-        }
-
-    returns JSON: 
-        {'status': 'success'}
-    '''
-    if request.method == 'GET':
-        return JsonResponse({'status': 'error', 'message': 'GET method not allowed'}, status=405)
-
-    account = 'admin'  # TODO: get from request
-
-    user = User.objects.get(account=account)
-    bookmark = Bookmarks.objects.filter(account=user.account, bid=bid)
-    if len(bookmark) == 0:
-        return JsonResponse({'status': 'error', 'message': 'bookmark not found'}, status=404)
-    try:
-        request_data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-    time = request_data.get('time')
-    if time is None:  # time is required
-        return JsonResponse({'status': 'error', 'message': 'missing time'}, status=400)
-
-    bookmark[0].delete()
-    user.lastUpdated = time
-
-    user.save()
-
-    return JsonResponse({'status': 'success'}, status=200)

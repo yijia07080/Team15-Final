@@ -24,6 +24,23 @@ const GroupSettingModal = ({ onClose, groupId }) => {
         event.stopPropagation();
     }
 
+  // 新增空間提供者相關
+  const handleAuthClick = () => {
+    const clientId = '488776431237-iqnrui5o43arlrm357sig0b7vtinb45m.apps.googleusercontent.com'
+    const redirectUri = ''  // TODO: 這裡要改成後端的網址，需與註冊用的不同
+    const scope = 'openid email profile https://www.googleapis.com/auth/drive'
+    const authUrl = [
+      'https://accounts.google.com/o/oauth2/v2/auth',
+      `?client_id=${clientId}`,
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`,
+      `&response_type=code`,
+      `&scope=${encodeURIComponent(scope)}`,
+      `&access_type=offline`,
+      `&prompt=consent`
+    ].join('')
+    window.location.href = authUrl
+  };
+
     const group = bookmarksTree.idToBookmark[groupId];
     if (group.metadata.file_type !== "group") {
         throw new Error("GroupSettingModal can only be used for group items");
@@ -36,6 +53,15 @@ const GroupSettingModal = ({ onClose, groupId }) => {
                 <div className={styles["group-info"]}>
                     <p>群組大小: {HummanReadableSize(group.metadata.used_size)} / {HummanReadableSize(group.metadata.total_size)}</p>
                     <div className={styles["providers-container"]}>
+                        <div className="d-flex justify-content-center align-items-center gap-2">
+                            <button
+                                className="btn btn-outline-secondary d-flex align-items-center"
+                                onClick={handleAuthClick}
+                            >
+                                <img src={imageMap["google.png"]} alt="Google Icon" />
+                                <span>新增Google Drive</span>
+                            </button>
+                        </div>
                         {group.metadata.spaceProviders.map((provider, index) => (
                             <div key={index} className={styles["provider"]}>
                                 <img src={provider.picture || imageMap["group.png"]} alt={provider.name} />
