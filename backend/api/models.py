@@ -15,9 +15,17 @@ class Bookmarks(models.Model):
     hidden = models.BooleanField(default=False)
     last_modified = models.DateTimeField(auto_now=True)
     file_type = models.CharField(max_length=20)  # root or group or folder or file
-    space_providers = models.JSONField(default=None, null=True, blank=True)  # just for file_type = "group" or "file", [provider1, provider2]
-    used_size = models.BigIntegerField(default=None, null=True, blank=True)  # just for file_type = "group" or "folder" or "file"
-    real_position = models.CharField(max_length=200, default=None, null=True, blank=True)  # just for file_type = "file"
+
+    # just for file_type = "group" or "file", 
+    # if group, [provider1, provider2, ...]
+    # if file, [provider]
+    space_providers = models.JSONField(default=None, null=True, blank=True) 
+
+    # just for file_type = "group" or "folder" or "file"
+    used_size = models.BigIntegerField(default=None, null=True, blank=True)  
+
+    # just for file_type = "file"
+    google_id = models.TextField(default=None, null=True, blank=True)
 
 class TreeStructure(models.Model):
     '''
@@ -42,5 +50,8 @@ class Provider(models.Model):
     provider_account = models.EmailField(max_length=254)
     provider_name = models.CharField(max_length=200)
     provider_picture = models.URLField(blank=True)
+    total_size = models.BigIntegerField(default=None, null=True, blank=True) 
     access_token = models.TextField(blank=True)
+    google_id = models.TextField(default=None, null=True, blank=True)  # google drive folder id for put files of this web app
+    
     

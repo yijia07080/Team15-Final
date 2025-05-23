@@ -1,3 +1,5 @@
+import Cookies from "js-cookie";
+
 class BookmarksTree {
   constructor(userInfo, treeStructure = null, idToBookmark = null, uploadStatusContext, onUpdate) {
     // 紀錄用戶名稱，訪客為 admin
@@ -228,7 +230,8 @@ class BookmarksTree {
       this.uploadStatus.addUpload(id, name, () => {xhr.abort();});
 
       xhr.open("POST", "/api/upload", true);
-      // xhr.withCredentials = true;  // 如果需要攜帶 cookie
+      xhr.withCredentials = true;  // 如果需要攜帶 cookie
+      xhr.setRequestHeader('X-CSRFToken', Cookies.get('csrftoken'));
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
