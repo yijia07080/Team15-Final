@@ -396,12 +396,14 @@ def oauth2callback(request):
     )
     tree, ts_created = TreeStructure.objects.update_or_create(
         account=user,
-        bid=root,
+        bookmark_foreignkey=root,
+        bid=root.bid,
         defaults={'parent_id': None, 'children_id': [group.bid]}
     )
     gtree, ts_created = TreeStructure.objects.update_or_create(
         account=user,
-        bid=group,
+        bookmark_foreignkey=group,
+        bid=group.bid,
         defaults={'parent_id': 0, 'children_id': []}
     )
 
