@@ -237,14 +237,26 @@ a:visited {
   border: 2px dashed #2196f3;
 }
 
-.tag-card:active {
-  cursor: grabbing;
+
+/* .tag-card {
+  cursor: grab;
+} */
+.tag-card.drag-over {
+  border: 2px dashed #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
 }
 
 .tag-card {
+  position: relative;
   cursor: grab;
+  transition: all 0.2s ease;
 }
 
+.tag-card:active {
+  cursor: grabbing;
+}
 .upload-status-container {
   position: fixed;
   bottom: 10px;

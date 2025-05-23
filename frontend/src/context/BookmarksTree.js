@@ -153,7 +153,7 @@ class BookmarksTree {
 
     // 確保目標是群組
     const targetFolder = this.idToBookmark[groupId];
-    if (targetFolder.metadata.file_type !== "group" && targetFolder.metadata.file_type !== "root") {
+    if (targetFolder.metadata.file_type !== "group" && targetFolder.metadata.file_type !== "root" && targetFolder.metadata.file_type !== "folder" ) {
       console.error(`Target with id ${groupId} is not a folder.`);
       return;
     }
