@@ -108,5 +108,3 @@ const MainContentItem = ({
     </div>
   );
 };
-
-export default MainContentItem;
