@@ -79,7 +79,7 @@ const MainContent = () => {
               className="dropdown-item"
               onClick={() => {
                 const a = document.createElement("a");
-                a.href = "http://localhost:3000/file/" + menu.bookmark.id;
+                a.href = "/api/download/" + menu.bookmark.id;
                 a.download = menu.bookmark.name;
                 a.click();
                 closeMenu();

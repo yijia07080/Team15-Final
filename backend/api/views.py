@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.urls import reverse
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.conf import settings
 from .models import Bookmarks, TreeStructure, User, Provider
 import secrets
@@ -123,7 +123,7 @@ def ensure_cookie(request):
         request.session.flush()
         return False
 
-def update_db_from_drive(account, update_provider_size=False, update_files=False):
+def update_db_from_drive(account, update_provider_size=False, update_files=False, update_token=False):
     """
     ensure data consistency between database and google drive
     update_size: update provider's avaliable size if db and drive not match
@@ -131,7 +131,23 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
         update file list and used size of all bookmarks if db and drive not match
         if db file not in drive, delete it from db
         if drive file not in db, do nothing        
+    update_token: check if token expired
     """
+    # check if token expired
+    if update_token:
+        for provider in Provider.objects.filter(account=account):
+            access_token = provider.access_token
+            try:
+                google_drive_opt.check_access_token(access_token)
+            except Exception as e:
+                logger.info(f" {provider.provider_account} Access token expired: {e}")
+                # refresh token
+                refresh_token = provider.refresh_token
+                new_access_token = google_drive_opt.refresh_access_token(refresh_token)
+                provider.access_token = new_access_token
+                provider.save()
+                logger.info(f"Refreshed access token for {provider.provider_account}")
+
     if update_files:
         db_files = Bookmarks.objects.filter(account=account)
         for provider in Provider.objects.filter(account=account):
@@ -423,6 +439,7 @@ def oauth2callback(request):
     )
     tokens = token_resp.json()
     access_token = tokens.get('access_token')
+    refresh_token = tokens.get('refresh_token')
     userinfo_resp = requests.get(
         'https://openidconnect.googleapis.com/v1/userinfo',
         headers={'Authorization': f'Bearer {access_token}'}
@@ -465,6 +482,7 @@ def oauth2callback(request):
             'provider_name': name,
             'provider_picture': picture,
             'access_token': access_token,
+            'refresh_token': refresh_token,
             'google_id': drive_root_folder['id'],
             'total_size': total_size,
         }
@@ -595,7 +613,7 @@ def bookmarks_init_api(request):
 
     # ensure data consistency between database and google drive
     if account != 'admin':
-        update_db_from_drive(user, update_provider_size=True, update_files=True)
+        update_db_from_drive(user, update_provider_size=True, update_files=True, update_token=True)
 
     ts_map = {
         ts.bid: {
@@ -754,8 +772,46 @@ def upload_file(request):
     else:
         return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
     
-def download_file(request):
-    '''
-    request:
-    - 
-    '''
+def download_file(request, bid):
+    # if request.method == 'GET':
+    #     return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+    
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+    if account == 'admin':
+        return JsonResponse({"status": "error", "message": "admin can't download file"}, status=400)
+    
+    # get file info
+    try:
+        bookmark = Bookmarks.objects.get(bid=bid, account=account)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "File not found"}, status=404)
+    
+    # TODO: download folder
+    if bookmark.file_type == 'group' or bookmark.file_type == 'folder':
+        return JsonResponse({"status": "error", "message": "Can't download folder"}, status=400)
+
+    # download file from google drive to temp file
+    provider = Provider.objects.get(account=account, provider_account=bookmark.space_providers[0])
+    access_token = provider.access_token
+    try:
+        local_file_path = google_drive_opt.download_file(
+            access_token,
+            bookmark.google_id,
+            temp_dir 
+        )
+
+        if local_file_path:
+            # send file to client
+            f = open(local_file_path, 'rb')
+            response = FileResponse(f)
+            response['Content-Disposition'] = f'attachment; filename="{bookmark.name}"'
+            response['Content-Type'] = 'application/octet-stream'
+            return response
+        else:
+            return JsonResponse({"status": "error", "message": "File download failed"}, status=500)
+    except Exception as e:
+        logger.error(f"Failed to download file: {e}")
+        return JsonResponse({"status": "error", "message": "File download failed"}, status=500)
+

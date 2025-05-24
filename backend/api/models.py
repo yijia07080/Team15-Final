@@ -52,6 +52,7 @@ class Provider(models.Model):
     provider_picture = models.URLField(blank=True)
     total_size = models.BigIntegerField(default=None, null=True, blank=True) 
     access_token = models.TextField(blank=True)
+    refresh_token = models.TextField(blank=True)
     google_id = models.TextField(default=None, null=True, blank=True)  # google drive folder id for put files of this web app
     
     

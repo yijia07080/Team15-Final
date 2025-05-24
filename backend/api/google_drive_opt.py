@@ -1,7 +1,34 @@
 from django.conf import settings
+import secrets
 import requests
 from pathlib import Path
 import json
+
+def check_access_token(access_token):
+    url = "https://www.googleapis.com/oauth2/v1/tokeninfo"
+    params = {
+        "access_token": access_token,
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return True
+    else:
+        raise Exception(f"Error: {response.status_code}, {response.text}")
+        
+def refresh_access_token(client_id, client_secret, refresh_token):
+    url = "https://oauth2.googleapis.com/token"
+    body = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    }
+
+    response = requests.post(url, data=body)
+    if response.status_code == 200:
+        return response.json().get('access_token')
+    else:
+        raise Exception(f"Error: {response.status_code}, {response.text}")
 
 def get_account_size(access_token):
     url = "https://www.googleapis.com/drive/v3/about"
@@ -19,7 +46,7 @@ def get_account_size(access_token):
         used_size = float(storage_quota.get('usage', 0))
         return limit_size, used_size
     else:
-        raise response
+        raise Exception(f"Error: {response.status_code}, {response.text}")
 
 def get_file_list(access_token, folder_id, trashed=False):
     '''
@@ -55,7 +82,7 @@ def get_file_list(access_token, folder_id, trashed=False):
     if response.status_code == 200:
         return files_list
     else:
-        raise response
+        raise Exception(f"Error: {response.status_code}, {response.text}")
 
 def create_folder(access_token, folder_name):
     '''
@@ -80,8 +107,8 @@ def create_folder(access_token, folder_name):
     if response.status_code == 200:
         return response.json()
     else:
-        raise response
-
+        raise Exception(f"Error: {response.status_code}, {response.text}")
+    
 def upload_file(access_token, file_path, folder_id):
     '''
     return file list {
@@ -115,8 +142,34 @@ def upload_file(access_token, file_path, folder_id):
     if response.status_code == 200:
         return response.json()
     else:
-        raise response
+        raise Exception(f"Error: {response.status_code}, {response.text}")
     
+def download_file(access_token, file_id, folder):
+    '''
+    return file path if success
+    '''
+    if type(folder) is str:
+        folder = Path(folder)
+    if not folder.exists():
+        raise FileNotFoundError(f"Folder not found: {folder}")
+
+    url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        file_name = response.headers.get('Content-Disposition')
+        path = folder / file_name
+        if path.exists():
+            return path
+        
+        with open(path, 'wb') as f:
+            f.write(response.content)
+        return path
+    else:
+        raise Exception(f"Error: {response.status_code}, {response.text}")
+
 def delete_file(access_token, file_id):
     url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
     headers = {
@@ -127,4 +180,4 @@ def delete_file(access_token, file_id):
     if response.status_code == 204:
         return True
     else:
-        raise response
+        raise Exception(f"Error: {response.status_code}, {response.text}")
