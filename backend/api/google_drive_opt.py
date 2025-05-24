@@ -239,3 +239,29 @@ def move_file_to_account(
         raise e
 
     return uploaded_file
+
+def copy_file_to_account(
+    from_access_token, 
+    to_access_token, 
+    from_file_id,
+    to_folder_id
+):
+    '''
+    Copy file from one account to another
+    return file (new position) {
+        "id": ...,
+        "name": ...,
+        "size": ...,
+        "mimeType": ...,
+    }
+    '''
+    # Download the file from the source account
+    try:
+        file_path = download_file(from_access_token, from_file_id, TEMP_DIR)
+
+        # Upload the file to the destination account
+        uploaded_file = upload_file(to_access_token, file_path, to_folder_id)
+    except Exception as e:
+        raise e
+
+    return uploaded_file

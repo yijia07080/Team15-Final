@@ -1034,8 +1034,10 @@ def bookmark_move(request, bid):
         return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
     
     # move file to new parent group
+    move_bids = []
+    move_bookmarks = []
+    new_providers = []
     try:
-        move_bids = []
         bfs_bid_queue = [bookmark.bid]
         while len(bfs_bid_queue) > 0:
             current_bid = bfs_bid_queue.pop(0)
@@ -1047,7 +1049,7 @@ def bookmark_move(request, bid):
             move_bookmark = Bookmarks.objects.get(bid=move_bid, account=account)
             if move_bookmark.file_type == 'folder':
                 continue
-            
+            move_bookmarks.append(move_bookmark)
             from_provider = Provider.objects.get(account=account, provider_account=move_bookmark.space_providers[0])
             from_access_token = from_provider.access_token
 
@@ -1059,9 +1061,10 @@ def bookmark_move(request, bid):
 
             if new_provider is None:
                 return JsonResponse({"status": "error", "message": "Not enough space in new parent group"}, status=400)
-            
+            new_providers.append(new_provider)
+
             to_access_token = new_provider.access_token
-            new_google_id = google_drive_opt.move_file_to_account(
+            new_google_id = google_drive_opt.copy_file_to_account(
                 from_access_token,
                 to_access_token,
                 move_bookmark.google_id,
@@ -1069,11 +1072,29 @@ def bookmark_move(request, bid):
             )['id']
             move_bookmark.google_id = new_google_id
             move_bookmark.space_providers = [new_provider.provider_account]
-            move_bookmark.save()
-    except google_drive_opt.ResponseError as e:
-        return JsonResponse({"status": "error", "message": f"Error moving file", "response": e.response}, status=e.response.status_code)
     except Exception as e:
+        # rollback
+        # remove new provider drive file
+        for i in range(len(move_bookmarks)):
+            google_drive_opt.delete_file(
+                new_providers[i].access_token,
+                move_bookmarks[i].google_id
+            )
+
+        if type(e) is google_drive_opt.ResponseError:
+            return JsonResponse({"status": "error", "message": f"Error moving file", "response": e.response}, status=e.response.status_code)
         return JsonResponse({"status": "error", "message": "Error moving file"}, status=500)
+    
+    bookmark_ts.save()
+    new_parent_ts.save()
+    old_parent_ts.save()
+
+    for i in range(len(move_bookmarks)):
+        move_bookmarks[i].save()
+        add_db_bookmarks([move_bookmarks[i]], [new_parent.bid], [account])
+        delete_db_file(move_bookmarks[i].bid, account)
+
+    return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
 
 def bookmark_rename(request, bid):
     """
