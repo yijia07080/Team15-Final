@@ -282,6 +282,27 @@ class BookmarksTree {
     }
     console.log(this.treeStructure);
     console.log(this.idToBookmark);
+
+    $.ajax({
+      url: 'http://localhost:8000/api/bookmarks/new_folder',
+      type: 'POST',
+      contentType: 'application/json',
+      crossDomain: true,
+      xhrFields: {
+          withCredentials: true
+      },
+      data: JSON.stringify({
+        new_folder: this.idToBookmark[id],
+        parent_id: 0,
+      }),
+    success: function (data) {
+        console.log("Server delete success:", data);
+      },
+    error: function (xhr, status, error) {
+        console.error('Server delete error:', error);
+      }
+    });
+
     // 通知 React 更新
     this.onUpdate();
   }
@@ -310,8 +331,27 @@ class BookmarksTree {
     if (this.idToBookmark[this.currentNode] && this.idToBookmark[this.currentNode].metadata) {
       this.idToBookmark[this.currentNode].metadata.last_modified = new Date().toISOString();
     }
-    // this.loaclDB.createId(id, this.idToBookmark[id], this.treeStructure[id]);
-    // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
+
+    $.ajax({
+      url: 'http://localhost:8000/api/bookmarks/new_folder',
+      type: 'POST',
+      contentType: 'application/json',
+      crossDomain: true,
+      xhrFields: {
+          withCredentials: true
+      },
+      data: JSON.stringify({
+        new_folder: this.idToBookmark[id],
+        parent_id: this.currentNode,
+      }),
+    success: function (data) {
+        console.log("Server delete success:", data);
+      },
+    error: function (xhr, status, error) {
+        console.error('Server delete error:', error);
+      }
+    }); 
+
     this.onUpdate();
   }
 
@@ -417,7 +457,7 @@ class BookmarksTree {
           console.error('Server delete error:', error);
         }
       });
-      
+
       this.onUpdate();
     } else {
       console.error(`Bookmark with id ${id} does not exist.`);

@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from api.views import upload_file, download_file
-from api.views import get_csrf, bookmarks_init_api, bookmark_move, bookmark_rename
+from api.views import get_csrf, bookmarks_init_api, bookmark_move, bookmark_rename, bookmark_new_folder
 from api.views import login_view, logout_view, oauth2callback, set_password, forgot_password, reset_password
 
 urlpatterns = [
@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/bookmarks/init', bookmarks_init_api, name='bookmarks_init_api'),
     path('api/bookmarks/move/<int:bid>', bookmark_move, name='bookmarks_move'),
     path('api/bookmarks/rename/<int:bid>', bookmark_rename, name='bookmarks_rename'),
+    path('api/bookmarks/new_folder', bookmark_new_folder, name='bookmarks_new_folder'),
     
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),

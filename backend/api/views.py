@@ -934,3 +934,68 @@ def bookmark_rename(request, bid):
         )
     
     return JsonResponse({"status": "success", "message": "File renamed successfully"}, status=200)
+
+def bookmark_new_folder(request):
+    """
+    create new folder
+    request should be form-data and include:
+    - new_folder: the new folder item to upload
+        {
+            id,
+            name,
+            url,
+            img,
+            tags,
+            hidden,
+            metadata: {
+                last_modified,
+                file_type,
+                used_size,
+            },
+        }
+    - parent_id: the parent bid of the file
+    """
+    if request.method == 'GET':
+        return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+    if account == 'admin':
+        return JsonResponse({"status": "error", "message": "admin can't create folder"}, status=400)
+    
+    new_folder_json = json.loads(request.POST.get("new_folder"))
+    parent_id = request.POST.get("parent_id")
+
+    if parent_id is None:
+        return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
+    
+    file_type = new_folder_json['file_type']
+    if file_type != 'folder' or file_type != 'group':
+        return JsonResponse({"status": "error", "message": f"Invalid file_type {new_folder_json['file_type']}"}, status=400)
+
+    # check if the file is a group
+    if new_folder_json['file_type'] == 'group':
+        new_folder_json['metadata']['spaceProviders'] = []
+        new_folder_json['metadata']['total_size'] = 0
+    new_folder_json['metadata']['used_size'] = 0
+
+    # adjust tree structure
+    new_folder = Bookmarks(
+        account=User.objects.get(account=account),
+        bid=new_folder_json['id'],
+        url="#",
+        img="folder.png" if file_type == 'folder' else "group.png",
+        name=new_folder_json['name'],
+        tags=new_folder_json['tags'],
+        hidden=new_folder_json['hidden'],
+        last_modified=new_folder_json['metadata']['last_modified'],
+        file_type=file_type,
+        used_size=new_folder_json['metadata']['used_size'],
+        space_providers=new_folder_json['metadata']['spaceProviders'],
+    )
+
+    add_db_bookmarks([new_folder], [parent_id], [account])
+
+    return JsonResponse({"status": "success", "message": "Folder created successfully"}, status=200)
+    
