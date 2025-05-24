@@ -151,8 +151,9 @@ class BookmarksTree {
     }
 
     // backend
+    const self = this;
     $.ajax({
-        url: 'http://localhost:8000/api/bookmark/move/' + id,
+        url: 'http://localhost:8000/api/bookmark/move/' + itemId,
         type: 'POST',
         contentType: 'application/json',
         crossDomain: true,
@@ -163,10 +164,26 @@ class BookmarksTree {
           new_parent_id: groupId,
         }),
         success: function (data) {
-            console.log("Server delete success:", data);
+            // 重新同步 bookmarks tree
+            $.ajax({
+                url: 'http://localhost:8000/api/bookmarks/init',
+                type: 'POST',
+                contentType: 'application/json',
+                crossDomain: true,
+                xhrFields: {
+                    withCredentials: true
+                },
+                success: function (data) {
+                    self._buildTree(data.treeStructure, data.idToBookmark);
+                    self.onUpdate();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error refreshing bookmarks after move:', error);
+                }
+            });
         },
         error: function (xhr, status, error) {
-            console.error('Server delete error:', error);
+            console.error('Server move error:', error);
         }
     });
 
