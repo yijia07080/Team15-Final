@@ -533,7 +533,15 @@ def provider_oauth2callback(request):
     """
     if request.method != 'GET':
         return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
-
+    state_param = request.GET.get("state")
+    if not state_param:
+        return JsonResponse({"status": "error", "message": "Missing state parameter"}, status=400)
+    try:
+        state_json = json.loads(state_param)
+    except ValueError:
+        return JsonResponse({"status": "error", "message": "Invalid state parameter"}, status=400)
+    group_id = state_json.get("group_id")
+    
     code = request.GET.get('code')
     token_resp = requests.post(
         'https://oauth2.googleapis.com/token',
@@ -550,11 +558,13 @@ def provider_oauth2callback(request):
     refresh_token = tokens.get('refresh_token')
 
     ensure_cookie(request)
-
+    if not access_token: # 待處理，重複授權情況
+        return JsonResponse({'status': 'error', 'message': 'no access_token'}, status=400)
+    
     state_json = json.loads(request.GET.get('state'))
 
     account = request.session.get('username', 'admin')
-    if not account:
+    if account == 'admin':
         return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
     user = User.objects.get(account=account)
 
@@ -614,8 +624,7 @@ def provider_oauth2callback(request):
     if provider.provider_account not in group.space_providers:
         group.space_providers.append(provider.provider_account)
         group.save()
-
-    return redirect(state_json.get('redirectBridge'))
+    return redirect(state_json.get('redirectBridge', 'http://localhost:5174/'))
 
 def remove_provider(request, group_id):
     '''

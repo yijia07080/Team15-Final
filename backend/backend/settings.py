@@ -19,9 +19,13 @@ env = environ.Env()
 CLIENT_ID = env("CLIENT_ID")
 CLIENT_SECRET = env("CLIENT_SECRET")
 REDIRECT_URI = env("REDIRECT_URI")
+PROVIDER_REDIRECT_URI = env("PROVIDER_REDIRECT_URI")
 RECAPTCHA_SECRETKEY = env("RECAPTCHA_SECRETKEY")
 RECAPTCHA_SITEKEY = env("RECAPTCHA_SITEKEY")
 RECAPTCHA_URL = env("RECAPTCHA_URL")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -34,7 +38,6 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
