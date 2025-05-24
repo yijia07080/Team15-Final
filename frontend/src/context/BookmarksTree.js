@@ -297,10 +297,10 @@ class BookmarksTree {
         parent_id: 0,
       }),
     success: function (data) {
-        console.log("Server delete success:", data);
+        console.log("Server add success:", data);
       },
     error: function (xhr, status, error) {
-        console.error('Server delete error:', error);
+        console.error('Server add error:', error);
       }
     });
 
@@ -346,10 +346,10 @@ class BookmarksTree {
         parent_id: this.currentNode,
       }),
     success: function (data) {
-        console.log("Server delete success:", data);
+        console.log("Server add success:", data);
       },
     error: function (xhr, status, error) {
-        console.error('Server delete error:', error);
+        console.error('Server add error:', error);
       }
     }); 
 
@@ -384,8 +384,23 @@ class BookmarksTree {
       // this.loaclDB.delId(node_id);
     };
     _deleteBookmark(id);
-    // this.loaclDB.updateTreeStructure(this.currentNode, this.treeStructure[this.currentNode])
-    // this.loaclDB.delId(id);
+
+    $.ajax({
+      url: 'http://localhost:8000/api/bookmarks/delete/enforce/' + id,
+      type: 'POST',
+      contentType: 'application/json',
+      crossDomain: true,
+      xhrFields: {
+          withCredentials: true
+      },
+    success: function (data) {
+        console.log("Server delete success:", data);
+      },
+    error: function (xhr, status, error) {
+        console.error('Server delete error:', error);
+      }
+    });
+
     this.onUpdate();
   }
 

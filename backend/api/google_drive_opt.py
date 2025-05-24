@@ -4,7 +4,13 @@ import requests
 from pathlib import Path
 import json
 
+class ResponseError(Exception):
+    def __init__(self, message, response):
+        super().__init__(message)
+        self.response = response
+
 def check_access_token(access_token):
+    # note that if access_token is invalid, error status is 400, not 401
     url = "https://www.googleapis.com/oauth2/v1/tokeninfo"
     params = {
         "access_token": access_token,
@@ -13,9 +19,13 @@ def check_access_token(access_token):
     if response.status_code == 200:
         return True
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
         
-def refresh_access_token(client_id, client_secret, refresh_token):
+def refresh_access_token(
+        refresh_token, 
+        client_id=settings.CLIENT_ID,
+        client_secret=settings.CLIENT_SECRET
+    ):
     url = "https://oauth2.googleapis.com/token"
     body = {
         "client_id": client_id,
@@ -28,7 +38,7 @@ def refresh_access_token(client_id, client_secret, refresh_token):
     if response.status_code == 200:
         return response.json().get('access_token')
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
 
 def get_account_size(access_token):
     url = "https://www.googleapis.com/drive/v3/about"
@@ -46,7 +56,7 @@ def get_account_size(access_token):
         used_size = float(storage_quota.get('usage', 0))
         return limit_size, used_size
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
 
 def get_file_list(access_token, folder_id, trashed=False):
     '''
@@ -82,7 +92,7 @@ def get_file_list(access_token, folder_id, trashed=False):
     if response.status_code == 200:
         return files_list
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
 
 def create_folder(access_token, folder_name):
     '''
@@ -107,7 +117,7 @@ def create_folder(access_token, folder_name):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
     
 def upload_file(access_token, file_path, folder_id):
     '''
@@ -142,7 +152,7 @@ def upload_file(access_token, file_path, folder_id):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
     
 def download_file(access_token, file_id, folder):
     '''
@@ -168,7 +178,7 @@ def download_file(access_token, file_id, folder):
             f.write(response.content)
         return path
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
 
 def delete_file(access_token, file_id):
     url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
@@ -180,7 +190,7 @@ def delete_file(access_token, file_id):
     if response.status_code == 204:
         return True
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
     
 def rename_file(access_token, file_id, new_name):
     url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
@@ -196,4 +206,4 @@ def rename_file(access_token, file_id, new_name):
     if response.status_code == 200:
         return response.json()
     else:
-        raise Exception(f"Error: {response.status_code}, {response.text}")
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)

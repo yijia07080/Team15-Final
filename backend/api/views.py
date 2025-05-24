@@ -18,6 +18,7 @@ import requests
 import logging
 import json
 import html
+import time
 import os
 import re
 from . import google_drive_opt
@@ -87,17 +88,21 @@ def add_db_bookmarks(bookmarks, parent_ids, accounts):
             folder.used_size += new_bookmarks[i].used_size
             folder.save()
 
-def delete_db_bookmark(bid, account):
+def delete_db_file(bid, account):
     """
     delete bookmark from database
     and adjust tree structure, group used_size
-    bids: list of bid to delete
+    enforce: if True, delete the group or folder even if it has children
     """
     # delete bookmark from database
     try:
         bookmark = Bookmarks.objects.get(bid=bid, account=account)
         ts = TreeStructure.objects.get(account=account, bid=bid)
         parent_tree = TreeStructure.objects.get(account=account, bid=ts.parent_id)
+
+        # check if the group or folder has children
+        if (bookmark.file_type == "group" or bookmark.file_type == "folder"):
+            raise ValueError("Cannot delete a group or folder that has children. Please move or delete its children first.")
 
         # adjust group used_size
         path_to_file = get_path_to_file(bid, account)
@@ -110,6 +115,35 @@ def delete_db_bookmark(bid, account):
         parent_tree.children_id = [child for child in parent_tree.children_id if child != bid]
         parent_tree.save()
         bookmark.delete()
+    except Bookmarks.DoesNotExist:
+        pass
+
+def delete_db_folder(bid, account):
+    """
+    delete folder from database
+    and adjust tree structure, group used_size
+    """
+    try:
+        folder = Bookmarks.objects.get(bid=bid, account=account)
+        ts = TreeStructure.objects.get(account=account, bid=bid)
+        parent_tree = TreeStructure.objects.get(account=account, bid=ts.parent_id)
+
+        if folder.file_type != "folder" and folder.file_type != "group":
+            raise ValueError("Only folder or group can be deleted with this function.")
+
+        # check if the group or folder has children
+        if len(ts.children_id) > 0:
+            raise ValueError("Cannot delete a group or folder that has children. Please move or delete its children first.")
+
+        # remove space providers
+        if folder.file_type == "group":
+            for provider in Provider.objects.filter(account=account, provider_account__in=folder.space_providers):
+                provider.delete()
+
+        # delete tree structure
+        parent_tree.children_id = [child for child in parent_tree.children_id if child != bid]
+        parent_tree.save()
+        folder.delete()
     except Bookmarks.DoesNotExist:
         pass
 
@@ -139,14 +173,19 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
             access_token = provider.access_token
             try:
                 google_drive_opt.check_access_token(access_token)
+            except google_drive_opt.ResponseError as e:
+                if e.response.status_code == 400:  # token expired
+                    logger.info(f" {provider.provider_account} Access token expired: {e}")
+                    # refresh token
+                    refresh_token = provider.refresh_token
+                    new_access_token = google_drive_opt.refresh_access_token(refresh_token)
+                    provider.access_token = new_access_token
+                    provider.save()
+                    logger.info(f"Refreshed access token for {provider.provider_account}")
+                else:
+                    return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
             except Exception as e:
-                logger.info(f" {provider.provider_account} Access token expired: {e}")
-                # refresh token
-                refresh_token = provider.refresh_token
-                new_access_token = google_drive_opt.refresh_access_token(refresh_token)
-                provider.access_token = new_access_token
-                provider.save()
-                logger.info(f"Refreshed access token for {provider.provider_account}")
+                raise e
 
     if update_files:
         db_files = Bookmarks.objects.filter(account=account)
@@ -154,7 +193,13 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
             provider_db_files = db_files.filter(space_providers__contains=[provider.provider_account])
 
             access_token = provider.access_token
-            provider_drive_files = google_drive_opt.get_file_list(access_token, provider.google_id)
+            try:
+                provider_drive_files = google_drive_opt.get_file_list(access_token, provider.google_id)
+            except google_drive_opt.ResponseError as e:
+                return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+            except Exception as e:
+                raise e
+            
             provider_drive_file_ids = [drive_file['id'] for drive_file in provider_drive_files]
 
             for db_file in provider_db_files:
@@ -163,13 +208,18 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
 
                 # check if db file not in drive
                 if db_file.google_id not in provider_drive_file_ids:
-                    delete_db_bookmark(db_file.bid, account)
+                    delete_db_file(db_file.bid, account)
                     logger.info(f"Deleted file {db_file.bid} from database because it is not in drive")
 
     if update_provider_size:
         for provider in Provider.objects.filter(account=account):
             access_token = provider.access_token
-            limit_size, used_size = google_drive_opt.get_account_size(access_token)
+            try:
+                limit_size, used_size = google_drive_opt.get_account_size(access_token)
+            except google_drive_opt.ResponseError as e:
+                return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+            except Exception as e:
+                raise e
             total_size = limit_size - used_size
             if provider.total_size != total_size:
                 # update provider's avaliable size
@@ -191,7 +241,7 @@ def upload_to_drive(account, local_file_path, parent_id, used_size):
             break
 
     if upload_provider is None:
-        return JsonResponse({"status": "error", "message": "No available provider"}, status=400)
+        raise ValueError("No available provider to upload the file")
     
     # upload file to google drive
     try:
@@ -200,6 +250,8 @@ def upload_to_drive(account, local_file_path, parent_id, used_size):
             local_file_path,
             upload_provider.google_id
         )
+    except google_drive_opt.ResponseError as e:
+        raise e
     except Exception as e:
         raise e
     
@@ -500,9 +552,13 @@ def oauth2callback(request):
         account=email,
         defaults={'name': name, 'picture': picture, 'password': ''}
     )
-
-    drive_root_folder = google_drive_opt.create_folder(access_token, "Team 15 Web App Container")
-    limit_size, used_size = google_drive_opt.get_account_size(access_token)
+    try:
+        drive_root_folder = google_drive_opt.create_folder(access_token, "Team 15 Web App Container")
+        limit_size, used_size = google_drive_opt.get_account_size(access_token)
+    except google_drive_opt.ResponseError as e:
+        return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+    except Exception as e:
+        raise e
     total_size = limit_size - used_size
     provider, created = Provider.objects.update_or_create(
         account=user,
@@ -737,7 +793,7 @@ def upload_file(request):
     
     file_name_pathobj = Path(file.name)
     file_stem, file_suffix = file_name_pathobj.stem, file_name_pathobj.suffix
-    temp_file_path = TEMP_DIR / f"{file_stem}-{secrets.token_hex(16)}.{file_suffix}"
+    temp_file_path = TEMP_DIR / f"{file_stem}-{secrets.token_hex(16)}{file_suffix}"
 
     if file:
         with open(temp_file_path, "wb+") as destination:
@@ -779,7 +835,7 @@ def upload_file(request):
     else:
         return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
     
-def download_file(request, bid):
+def download(request, bid):
     # if request.method == 'GET':
     #     return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
     
@@ -818,10 +874,12 @@ def download_file(request, bid):
             return response
         else:
             return JsonResponse({"status": "error", "message": "File download failed"}, status=500)
+    except google_drive_opt.ResponseError as e:
+        return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
     except Exception as e:
-        logger.error(f"Failed to download file: {e}")
         return JsonResponse({"status": "error", "message": "File download failed"}, status=500)
 
+# TODO: check if the file is a group or folder
 def bookmark_move(request, bid):
     """
     move bid to another folder or group
@@ -882,7 +940,7 @@ def bookmark_move(request, bid):
         bookmark.save()
 
     # deal with database
-    delete_db_bookmark(bid, account)
+    delete_db_file(bid, account)
     add_db_bookmarks([bookmark], [new_parent_id], [account])
     return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
 
@@ -929,7 +987,7 @@ def bookmark_rename(request, bid):
         google_drive_opt.rename_file(
             access_token,
             bookmark.google_id,
-            new_name_pathobj.stem + f'-{secrets.token_hex(16)}.' + new_name_pathobj.suffix
+            new_name_pathobj.stem + f'-{secrets.token_hex(16)}' + new_name_pathobj.suffix
         )
     
     return JsonResponse({"status": "success", "message": "File renamed successfully"}, status=200)
@@ -1001,3 +1059,64 @@ def bookmark_new_folder(request):
 
     return JsonResponse({"status": "success", "message": "Folder created successfully"}, status=200)
     
+def bookmark_delete(request, bid, enforce=False):
+    """
+    delete bookmark
+    if enforce is True, delete the folder and all its children
+    """
+    if request.method == 'GET':
+        return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+    if account == 'admin':
+        return JsonResponse({"status": "error", "message": "admin can't delete folder"}, status=400)
+    
+    # get file info
+    try:
+        bookmark = Bookmarks.objects.get(bid=bid, account=account)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "File not found"}, status=404)
+    
+    # check if the file is a root
+    if bookmark.file_type == 'root':
+        return JsonResponse({"status": "error", "message": "Can't delete root"}, status=400)
+    
+    delete_bids = []
+    if bookmark.file_type == 'group' or bookmark.file_type == 'folder':
+        bfs_bid_queue = [bookmark.bid]
+        while len(bfs_bid_queue) > 0:
+            current_bid = bfs_bid_queue.pop(0)
+            delete_bids.append(current_bid)
+            children = TreeStructure.objects.filter(account=account, parent_id=current_bid).values_list('bid', flat=True)
+            bfs_bid_queue.extend(children)
+    
+    if len(delete_bids) > 1 and not enforce:
+        return JsonResponse({"status": "error", "message": "Can't delete multiple files at once"}, status=400)
+    
+    delete_bookmarks = Bookmarks.objects.filter(bid__in=delete_bids, account=account)
+    delete_files = delete_bookmarks.exclude(file_type__in=['group', 'folder'])
+    delete_folders = delete_bookmarks.filter(file_type__in=['group', 'folder'])
+
+    # remove from google drive
+    for i, delete_file in enumerate(delete_files):
+        provider = Provider.objects.get(account=account, provider_account=delete_file.space_providers[0])
+        access_token = provider.access_token
+        try:
+            google_drive_opt.delete_file(
+                access_token,
+                delete_file.google_id
+            )
+        except google_drive_opt.ResponseError as e:
+            return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+        except Exception as e:
+            raise e
+    
+    # remove from database
+    for i, delete_file in enumerate(delete_files):
+        delete_db_file(delete_file.bid, account)
+    for i, delete_folder in enumerate(delete_folders):
+        delete_db_folder(delete_folder.bid, account)
+
+    return JsonResponse({"status": "success", "message": "File deleted successfully"}, status=200)
