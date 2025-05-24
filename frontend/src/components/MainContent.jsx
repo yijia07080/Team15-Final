@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from "react";
 import MainContentItem from "./MainContentItem";
 import BookmarksContext from "../context/BookmarksContext";
 import SelectDestModal from "./SelectDestModal/SelectDestModal";
+import DownloadContext from "../context/DownloadContext";
 
 const MainContent = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
@@ -10,7 +11,7 @@ const MainContent = () => {
   const [menu, setMenu] = useState({ show: false, x: 0, y: 0, bookmark: null });
   const [showSelectDestModal, setSelectDestModal] = useState(false);
   const [movingBookmark, setMovingBookmark] = useState(null);   // ← 這裡
-
+  const { downloadStatus } = useContext(DownloadContext);
   const openMenu = (e, bookmark) => {
     e.preventDefault();
     e.stopPropagation();
@@ -82,6 +83,10 @@ const MainContent = () => {
                 a.href = "/api/download/" + menu.bookmark.id;
                 a.download = menu.bookmark.name;
                 a.click();
+                
+                // Add to download status tracking
+                downloadStatus.addDownload(Date.now(), menu.bookmark.name);
+                
                 closeMenu();
               }}
             >
