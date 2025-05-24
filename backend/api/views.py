@@ -359,109 +359,6 @@ def rate_limit(view_func):
         return view_func(request, *args, **kwargs)
     return wrapped_view
 
-# # XSS Protection - Sanitize function for strings
-# def sanitize_string(value):
-#     """
-#     Sanitizes a string value to prevent XSS attacks.
-#     Escapes HTML special characters and removes script tags.
-#     """
-#     if value is None:
-#         return None
-#     if not isinstance(value, str):
-#         return value
-    
-#     # Escape HTML special characters
-#     value = html.escape(value)
-#     # Remove script and event handler patterns
-#     value = re.sub(r'<script.*?>.*?</script>', '', value, flags=re.IGNORECASE | re.DOTALL)
-#     value = re.sub(r'javascript:', '', value, flags=re.IGNORECASE)
-#     value = re.sub(r'on\w+\s*=', '', value, flags=re.IGNORECASE)
-    
-#     return value
-# # XSS Protection - Sanitize function for data structures
-# def sanitize_data(data):
-#     """
-#     Recursively sanitizes data structures to prevent XSS attacks.
-#     Handles strings, lists, and dictionaries.
-#     """
-#     if isinstance(data, str):
-#         return sanitize_string(data)
-#     elif isinstance(data, list):
-#         return [sanitize_data(item) for item in data]
-#     elif isinstance(data, dict):
-#         return {k: sanitize_data(v) for k, v in data.items()}
-#     else:
-#         return data
-
-# # validate bookmark data
-# def validate_bookmark_request(data, require_all_fields=False):
-#     required_fields = {
-#         'time': str,
-#         'parent_id': int,
-#         'children_id': list,
-#         'url': str,
-#         'img': str,
-#         'name': str,
-#         'tags': list,
-#         'starred': bool,
-#         'hidden': bool
-#     }
-#     length_limits = {
-#         'url': 2048,
-#         'img': 2048,
-#         'name': 255,
-#         'tags': 50,  # 每個標籤的最大長度
-#         'tags_count': 10  # 標籤數量上限
-#     }
-#     if 'url' in data and len(data['url']) > length_limits['url']:
-#         return False, JsonResponse({'status': 'error', 'message': f'URL長度不能超過{length_limits["url"]}個字符'}, status=400)
-    
-#     if 'img' in data and len(data['img']) > length_limits['img']:
-#         return False, JsonResponse({'status': 'error', 'message': f'圖片URL長度不能超過{length_limits["img"]}個字符'}, status=400)
-    
-#     if 'name' in data and len(data['name']) > length_limits['name']:
-#         return False, JsonResponse({'status': 'error', 'message': f'名稱長度不能超過{length_limits["name"]}個字符'}, status=400)
-    
-#     if 'tags' in data:
-#         if len(data['tags']) > length_limits['tags_count']:
-#             return False, JsonResponse({'status': 'error', 'message': f'標籤數量不能超過{length_limits["tags_count"]}個'}, status=400)
-#         for tag in data['tags']:
-#             if len(tag) > length_limits['tags']:
-#                 return False, JsonResponse({'status': 'error', 'message': f'每個標籤長度不能超過{length_limits["tags"]}個字符'}, status=400)
-
-#     validated = {}
-
-#     unknown_keys = set(data.keys()) - set(required_fields.keys())
-#     if unknown_keys:
-#         return False, JsonResponse({'status': 'error', 'message': f'Unknown fields: {list(unknown_keys)}'}, status=400)
-
-#     for key, expected_type in required_fields.items():
-#         value = data.get(key)
-
-#         if require_all_fields and value is None:
-#             return False, JsonResponse({'status': 'error', 'message': f'Missing field: {key}'}, status=400)
-
-#         if value is not None:
-#             if expected_type == int and not isinstance(value, int):
-#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be an integer'}, status=400)
-#             if expected_type == str and not isinstance(value, str):
-#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be a string'}, status=400)
-#             if expected_type == bool and not isinstance(value, bool):
-#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be a boolean'}, status=400)
-#             if expected_type == list and not isinstance(value, list):
-#                 return False, JsonResponse({'status': 'error', 'message': f'{key} must be a list'}, status=400)
-
-#             if key == 'tags':
-#                 if not all(isinstance(tag, str) for tag in value):
-#                     return False, JsonResponse({'status': 'error', 'message': 'Each tag must be a string'}, status=400)
-#             if key == 'children_id':
-#                 if not all(isinstance(cid, int) for cid in value):
-#                     return False, JsonResponse({'status': 'error', 'message': 'Each children_id must be an integer'}, status=400)
-#             validated[key] = value
-#         else:
-#             validated[key] = None
-
-#     return True, validated
 
 @rate_limit
 def login_view(request):
@@ -975,7 +872,7 @@ def upload_file(request):
     bookmark_json = json.loads(request.POST.get("new_bookmark"))
     parent_id = request.POST.get("parent_id")
 
-    if parent_id == '0' or parent_id is None:
+    if parent_id == 0 or parent_id is None:
         return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
     
     file_name_pathobj = Path(file.name)
@@ -1123,7 +1020,8 @@ def bookmark_move(request, bid):
 
     # if new parent in other group, move file to new parent group
     new_parent_group = get_path_to_file(new_parent.bid, account)[1]
-    if new_parent_group == bookmark.space_providers[0]:
+    old_group = get_path_to_file(bookmark.bid, account)[1]
+    if new_parent_group == old_group:
         return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
     
     # move file to new parent group
@@ -1137,6 +1035,9 @@ def bookmark_move(request, bid):
             bfs_bid_queue.extend(children)
         
         for move_bid in move_bids:
+            if Bookmarks.objects.get(bid=move_bid, account=account).file_type == 'folder':
+                continue
+
             move_bookmark = Bookmarks.objects.get(bid=move_bid, account=account)
             from_provider = Provider.objects.get(account=account, provider_account=move_bookmark.space_providers[0])
             from_access_token = from_provider.access_token
@@ -1253,9 +1154,9 @@ def bookmark_new_folder(request):
     if file_type != 'folder' and file_type != 'group':
         return JsonResponse({"status": "error", "message": f"Invalid file_type {file_type}"}, status=400)
 
-    if file_type == 'folder' and parent_id == '0':
+    if file_type == 'folder' and parent_id == 0:
         return JsonResponse({"status": "error", "message": "Can't create folder in root"}, status=400)
-    if file_type == 'group' and parent_id != '0':
+    if file_type == 'group' and parent_id != 0:
         return JsonResponse({"status": "error", "message": "Group can only be created in root"}, status=400)
 
     # check if the file is a group

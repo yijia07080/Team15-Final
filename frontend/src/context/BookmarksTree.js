@@ -153,7 +153,7 @@ class BookmarksTree {
     // backend
     const self = this;
     $.ajax({
-        url: 'http://localhost:8000/api/bookmark/move/' + itemId,
+        url: 'http://localhost:8000/api/bookmarks/move/' + itemId,
         type: 'POST',
         contentType: 'application/json',
         crossDomain: true,
