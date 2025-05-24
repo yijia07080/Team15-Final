@@ -910,7 +910,7 @@ def upload_file(request):
             hidden=bookmark_json['hidden'],
             last_modified=bookmark_json['metadata']['last_modified'],
             file_type=bookmark_json['metadata']['file_type'],
-            used_size=bookmark_json['metadata']['used_size'],
+            used_size=temp_file_path.stat().st_size,
             space_providers=[upload_provider.provider_account],
             google_id=upload_respone['id'],
         )
@@ -1023,14 +1023,14 @@ def bookmark_move(request, bid):
     new_parent_ts.children_id = list(set(new_parent_ts.children_id + [bookmark.bid]))  
     old_parent_ts.children_id = [cid for cid in old_parent_ts.children_id if cid != bookmark.bid]
 
-    bookmark_ts.save()
-    new_parent_ts.save()
-    old_parent_ts.save()
 
     # if new parent in other group, move file to new parent group
     new_parent_group = get_path_to_file(new_parent.bid, account)[1]
     old_group = get_path_to_file(bookmark.bid, account)[1]
     if new_parent_group == old_group:
+        bookmark_ts.save()
+        new_parent_ts.save()
+        old_parent_ts.save()
         return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
     
     # move file to new parent group
@@ -1044,10 +1044,10 @@ def bookmark_move(request, bid):
             bfs_bid_queue.extend(children)
         
         for move_bid in move_bids:
-            if Bookmarks.objects.get(bid=move_bid, account=account).file_type == 'folder':
-                continue
-
             move_bookmark = Bookmarks.objects.get(bid=move_bid, account=account)
+            if move_bookmark.file_type == 'folder':
+                continue
+            
             from_provider = Provider.objects.get(account=account, provider_account=move_bookmark.space_providers[0])
             from_access_token = from_provider.access_token
 
