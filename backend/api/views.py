@@ -202,9 +202,6 @@ def upload_to_drive(account, local_file_path, parent_id, used_size):
         )
     except Exception as e:
         raise e
-
-    if upload_respone.status_code != 200:
-        return JsonResponse({"status": "error", "message": "Upload failed", "error": upload_respone.text}, status=400)
     
     return upload_provider, upload_respone, path_bid[1]
 
@@ -541,7 +538,7 @@ def oauth2callback(request):
             'img': 'group.png',
             'name': '群組1',
             'tags': [],
-            'hidden': True,
+            'hidden': False,
             'last_modified': datetime.now().isoformat(),
             'file_type': "group",
             'space_providers': [provider.provider_account],
@@ -738,7 +735,8 @@ def upload_file(request):
     if parent_id == '0' or parent_id is None:
         return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
     
-    file_stem, file_suffix = file.name.split('.')
+    file_name_pathobj = Path(file.name)
+    file_stem, file_suffix = file_name_pathobj.stem, file_name_pathobj.suffix
     temp_file_path = TEMP_DIR / f"{file_stem}-{secrets.token_hex(16)}.{file_suffix}"
 
     if file:
@@ -926,11 +924,11 @@ def bookmark_rename(request, bid):
     if bookmark.file_type != 'group' or bookmark.file_type != 'folder':
         provider = Provider.objects.get(account=account, provider_account=bookmark.space_providers[0])
         access_token = provider.access_token
-        new_name_tokens = new_name.split('.')
+        new_name_pathobj = Path(new_name)
         google_drive_opt.rename_file(
             access_token,
             bookmark.google_id,
-            new_name_tokens[0] + f'-{secrets.token_hex(16)}.' + new_name_tokens[1]
+            new_name_pathobj.stem + f'-{secrets.token_hex(16)}.' + new_name_pathobj.suffix
         )
     
     return JsonResponse({"status": "success", "message": "File renamed successfully"}, status=200)
@@ -963,21 +961,24 @@ def bookmark_new_folder(request):
     account = request.session.get('username', 'admin')
     if account == 'admin':
         return JsonResponse({"status": "error", "message": "admin can't create folder"}, status=400)
-    
-    new_folder_json = json.loads(request.POST.get("new_folder"))
-    parent_id = request.POST.get("parent_id")
+
+    request_data = json.loads(request.body)
+    new_folder_json = request_data.get("new_folder")
+    parent_id = request_data.get("parent_id")
 
     if parent_id is None:
         return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
     
-    file_type = new_folder_json['file_type']
-    if file_type != 'folder' or file_type != 'group':
-        return JsonResponse({"status": "error", "message": f"Invalid file_type {new_folder_json['file_type']}"}, status=400)
+    file_type = new_folder_json['metadata']['file_type']
+    if file_type != 'folder' and file_type != 'group':
+        return JsonResponse({"status": "error", "message": f"Invalid file_type {file_type}"}, status=400)
 
     # check if the file is a group
-    if new_folder_json['file_type'] == 'group':
+    if file_type == 'group':
         new_folder_json['metadata']['spaceProviders'] = []
         new_folder_json['metadata']['total_size'] = 0
+    else:
+        new_folder_json['metadata']['spaceProviders'] = None
     new_folder_json['metadata']['used_size'] = 0
 
     # adjust tree structure

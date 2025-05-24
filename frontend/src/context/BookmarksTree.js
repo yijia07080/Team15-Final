@@ -1,4 +1,5 @@
 import Cookies from "js-cookie";
+import $ from "jquery";
 
 class BookmarksTree {
   constructor(userInfo, treeStructure = null, idToBookmark = null, uploadStatusContext, onUpdate) {
