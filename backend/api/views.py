@@ -672,14 +672,14 @@ def bookmarks_init_api(request):
         if bm.file_type == 'group':
             provider_objs = Provider.objects.filter(account=user, provider_account__in=bm.space_providers)
             idToBookmark[bid]['metadata']['total_size'] = 0
+            idToBookmark[bid]['metadata']['spaceProviders'] = []
             for provider in provider_objs:
-                idToBookmark[bid]['metadata']['spaceProviders'] = [
-                    {
-                        'name': provider.provider_account,
-                        'picture': provider.provider_picture,
-                        'total_size': provider.total_size,
-                    }
-                ]
+                idToBookmark[bid]['metadata']['spaceProviders'].append({
+                    'name': provider.provider_account,
+                    'picture': provider.provider_picture,
+                    'total_size': provider.total_size,
+                })
+
                 idToBookmark[bid]['metadata']['total_size'] += provider.total_size
 
     response_data = {
@@ -912,7 +912,8 @@ def bookmark_rename(request, bid):
         return JsonResponse({"status": "error", "message": "Can't rename root"}, status=400)
     
     # get new name
-    new_name = request.POST.get("new_name")
+    data = json.loads(request.body)
+    new_name = data.get("new_name")
     if new_name is None:
         return JsonResponse({"status": "error", "message": f"Invalid name {new_name}"}, status=400)
     
@@ -921,7 +922,7 @@ def bookmark_rename(request, bid):
     bookmark.save()
 
     # update google drive
-    if bookmark.file_type != 'group' or bookmark.file_type != 'folder':
+    if bookmark.file_type != 'group' and bookmark.file_type != 'folder':
         provider = Provider.objects.get(account=account, provider_account=bookmark.space_providers[0])
         access_token = provider.access_token
         new_name_pathobj = Path(new_name)

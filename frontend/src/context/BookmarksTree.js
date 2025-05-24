@@ -441,7 +441,7 @@ class BookmarksTree {
       this.idToBookmark[id].name = newName;
 
       $.ajax({
-        url: 'http://localhost:8000/api/bookmark/rename/' + id,
+        url: 'http://localhost:8000/api/bookmarks/rename/' + id,
         type: 'POST',
         contentType: 'application/json',
         crossDomain: true,
