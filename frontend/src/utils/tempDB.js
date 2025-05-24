@@ -45,11 +45,13 @@ export const idToFile = {
           name: "a@example.com",
           picture: "",
           total_size: 10000000,
+          used_size: 3478080,
         },
         {
           name: "b@example.com",
           picture: "",
           total_size: 10000000,
+          used_size: 0,
         },
       ]
     },
@@ -84,11 +86,13 @@ export const idToFile = {
           name: "c@example.com",
           picture: "",
           total_size: 10000000,
+          used_size: 100,
         },
         {
           name: "d@example.com",
           picture: "",
           total_size: 10000000,
+          used_size: 0,
         },
       ]
     },

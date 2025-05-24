@@ -3,6 +3,9 @@ import secrets
 import requests
 from pathlib import Path
 import json
+import tempfile
+
+TEMP_DIR = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
 
 class ResponseError(Exception):
     def __init__(self, message, response):
@@ -52,9 +55,9 @@ def get_account_size(access_token):
     response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:
         storage_quota = response.json().get('storageQuota', {})
-        limit_size = float(storage_quota.get('limit', 0))
+        total_size = float(storage_quota.get('limit', 0))
         used_size = float(storage_quota.get('usage', 0))
-        return limit_size, used_size
+        return total_size, used_size
     else:
         raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
 
@@ -207,3 +210,32 @@ def rename_file(access_token, file_id, new_name):
         return response.json()
     else:
         raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
+    
+def move_file_to_account(
+    from_access_token, 
+    to_access_token, 
+    from_file_id,
+    to_folder_id
+):
+    '''
+    Move file from one account to another
+    return file (new position) {
+        "id": ...,
+        "name": ...,
+        "size": ...,
+        "mimeType": ...,
+    }
+    '''
+    # Download the file from the source account
+    try:
+        file_path = download_file(from_access_token, from_file_id, TEMP_DIR)
+
+        # Upload the file to the destination account
+        uploaded_file = upload_file(to_access_token, file_path, to_folder_id)
+
+        # delete the file from the source account
+        delete_file(from_access_token, from_file_id)
+    except Exception as e:
+        raise e
+
+    return uploaded_file

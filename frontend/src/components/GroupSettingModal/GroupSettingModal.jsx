@@ -13,6 +13,14 @@ const HummanReadableSize = (size) => {
     return `${size.toFixed(2)} ${units[index]}`;
 }
 
+const getAllUsedSize = (group) => {
+    let allUsedSize = 0;
+    group.metadata.spaceProviders.forEach(provider => {
+        allUsedSize += provider.used_size;
+    });
+    return allUsedSize;
+}
+
 const GroupSettingModal = ({ onClose, groupId }) => {
     const { bookmarksTree } = useContext(BookmarksContext);
 
@@ -49,7 +57,7 @@ const GroupSettingModal = ({ onClose, groupId }) => {
                 className={styles['h2-input']}
                 />
                 <div className={styles["group-info"]}>
-                    <p>群組大小: {HummanReadableSize(group.metadata.used_size)} / {HummanReadableSize(group.metadata.total_size)}</p>
+                    <p>群組大小: {HummanReadableSize(getAllUsedSize(group))} / {HummanReadableSize(group.metadata.total_size)}</p>
                     <div className={styles["providers-container"]}>
                         <div className="d-flex justify-content-center align-items-center gap-2">
                             <button

@@ -26,8 +26,6 @@ from . import google_drive_opt
 logger = logging.getLogger(__name__)
 
 TEMP_DIR = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
-if not TEMP_DIR.exists():
-    TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 DRIVE_ROOT_FOLDER = "Team 15 Web App Container"
 
@@ -204,11 +202,11 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
             
             provider_drive_file_ids = [drive_file['id'] for drive_file in provider_drive_files]
 
+            # check if db file not in drive
             for db_file in provider_db_files:
                 if db_file.file_type == "group" or db_file.file_type == "folder" or db_file.file_type == "root":
                     continue
 
-                # check if db file not in drive
                 if db_file.google_id not in provider_drive_file_ids:
                     delete_db_file(db_file.bid, account)
                     logger.info(f"Deleted file {db_file.bid} from database because it is not in drive")
@@ -217,18 +215,20 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
         for provider in Provider.objects.filter(account=account):
             access_token = provider.access_token
             try:
-                limit_size, used_size = google_drive_opt.get_account_size(access_token)
+                total_size, used_size = google_drive_opt.get_account_size(access_token)
             except google_drive_opt.ResponseError as e:
                 return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
             except Exception as e:
                 raise e
-            total_size = limit_size - used_size
-            if provider.total_size != total_size:
-                # update provider's avaliable size
-                Provider.objects.filter(account=account, provider_account=provider.provider_account).update(total_size=total_size)
 
-def upload_to_drive(account, local_file_path, parent_id, used_size):
+            provider.total_size = total_size
+            provider.used_size = used_size
+            provider.save()
+
+def upload_to_drive(account, local_file_path, parent_id, file_used_size):
     '''
+    first update provider total size and used size
+    will select a provider from the group space_providers to upload the file
     returns: upload_provider, upload_response, parent_group_bid
     '''
     # decide upload to which provider
@@ -238,7 +238,7 @@ def upload_to_drive(account, local_file_path, parent_id, used_size):
     upload_providers = Provider.objects.filter(account=account, provider_account__in=group.space_providers)
     upload_provider = None
     for provider in upload_providers:
-        if provider.total_size > used_size:
+        if provider.total_size - provider.used_size > file_used_size:
             upload_provider = provider
             break
 
@@ -556,12 +556,12 @@ def oauth2callback(request):
     )
     try:
         drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)
-        limit_size, used_size = google_drive_opt.get_account_size(access_token)
+        total_size, used_size = google_drive_opt.get_account_size(access_token)
     except google_drive_opt.ResponseError as e:
         return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
     except Exception as e:
         raise e
-    total_size = limit_size - used_size
+    
     provider, created = Provider.objects.update_or_create(
         account=user,
         defaults={
@@ -572,6 +572,7 @@ def oauth2callback(request):
             'refresh_token': refresh_token,
             'google_id': drive_root_folder['id'],
             'total_size': total_size,
+            'used_size': used_size,
         }
     )
 
@@ -636,23 +637,6 @@ def provider_oauth2callback(request):
     if request.method != 'GET':
         return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
 
-    ensure_cookie(request)
-
-    state = request.GET.get('state')
-
-    account = request.session.get('username', 'admin')
-    if not account:
-        return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
-    user = User.objects.get(account=account)
-
-    group_id = state.get('group_id')
-    try:
-        group = Bookmarks.objects.get(bid=group_id, account=user)
-    except Bookmarks.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Group not found"}, status=404)
-    if group.file_type != "group":
-        return JsonResponse({"status": "error", "message": "Not a group"}, status=400)
-
     code = request.GET.get('code')
     token_resp = requests.post(
         'https://oauth2.googleapis.com/token',
@@ -660,13 +644,30 @@ def provider_oauth2callback(request):
             'code': code,
             'client_id': settings.CLIENT_ID,
             'client_secret': settings.CLIENT_SECRET,
-            'redirect_uri': settings.REDIRECT_URI,
+            'redirect_uri': settings.PROVIDER_REDIRECT_URI,
             'grant_type': 'authorization_code'
         }
     )
     tokens = token_resp.json()
     access_token = tokens.get('access_token')
     refresh_token = tokens.get('refresh_token')
+
+    ensure_cookie(request)
+
+    state_json = json.loads(request.GET.get('state'))
+
+    account = request.session.get('username', 'admin')
+    if not account:
+        return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
+    user = User.objects.get(account=account)
+
+    group_id = state_json.get('groupId')
+    try:
+        group = Bookmarks.objects.get(bid=group_id, account=user)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Group not found"}, status=404)
+    if group.file_type != "group":
+        return JsonResponse({"status": "error", "message": "Not a group"}, status=400)
 
     provider_info_response = requests.get(
         'https://openidconnect.googleapis.com/v1/userinfo',
@@ -678,15 +679,26 @@ def provider_oauth2callback(request):
     name = provider_info.get('name')
     picture = provider_info.get('picture')
 
-    # init google drive folder
+    # init google drive folder if not exists
     try:
-        drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)
-        limit_size, used_size = google_drive_opt.get_account_size(access_token)
+        existing_provider = Provider.objects.get(account=user, provider_account=email)
+        drive_root_folder = {'id': existing_provider.google_id}
+    except Provider.DoesNotExist:
+        try:
+            drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)  
+        except google_drive_opt.ResponseError as e:
+            return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+        except Exception as e:
+            raise e
+        
+    # update or create provider
+    try:
+        total_size, used_size = google_drive_opt.get_account_size(access_token)
     except google_drive_opt.ResponseError as e:
         return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
     except Exception as e:
         raise e
-    total_size = limit_size - used_size
+
     provider, created = Provider.objects.update_or_create(
         account=user,
         defaults={
@@ -697,6 +709,7 @@ def provider_oauth2callback(request):
             'refresh_token': refresh_token,
             'google_id': drive_root_folder['id'],
             'total_size': total_size,
+            'used_size': used_size,
         }
     )
 
@@ -705,8 +718,94 @@ def provider_oauth2callback(request):
         group.space_providers.append(provider.provider_account)
         group.save()
 
-    return redirect(state.get('redirect_url'))
-                    
+    return redirect(state_json.get('redirectBridge'))
+
+def remove_provider(request, group_id):
+    '''
+    remove a provider account from a group
+    request:
+    - provider_account: the account of the provider to remove
+    '''
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
+    
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+    if not account:
+        return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
+    
+    update_db_from_drive(account, update_provider_size=True, update_files=True)
+
+    data = json.loads(request.body)
+    remove_provider_account = data.get('provider_account')
+    user = User.objects.get(account=account)
+
+    try:
+        group = Bookmarks.objects.get(bid=group_id, account=user)
+        if group.file_type != "group":
+            return JsonResponse({"status": "error", "message": "Not a group"}, status=400)
+        if remove_provider_account not in group.space_providers:
+            return JsonResponse({"status": "error", "message": "Provider not found in group"}, status=404)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Group not found"}, status=404)
+
+    remove_provider_files = Bookmarks.objects.filter(account=user, space_providers__contains=[remove_provider_account])
+    remove_provider_files = remove_provider_files.exclude(file_type__in=["group", "folder", "root"])
+    if not remove_provider_files.exists():  # dierectly remove provider if no files
+        Provider.objects.filter(account=user, provider_account=remove_provider_account).delete()
+        group.space_providers = [p for p in group.space_providers if p != remove_provider_account]
+        group.save()
+        return JsonResponse({"status": "success", "message": "Provider removed successfully"})
+       
+    # ensure have enough space to remove provider
+    # p1 [[[this webapp used]   used_size] total_size]
+    # p2 [[[...]   used_size]              total_size]
+    # p3 [[[...]           used_size]      total_size]
+    # if remove p3, p3 webapp used_size < p1.total_size + p2.total_size - p1.used_size - p2.used_size
+    remove_provider_files_used_size = sum(file.used_size for file in remove_provider_files)
+    avaliable_size = 0
+    other_providers = Provider.objects.filter(account=user).exclude(provider_account=remove_provider_account)
+    remove_provider = Provider.objects.get(account=user, provider_account=remove_provider_account)
+    for provider in other_providers:
+        avaliable_size += provider.total_size - provider.used_size
+    
+    if remove_provider_files_used_size > avaliable_size:
+        return JsonResponse({"status": "error", "message": "Not enough space to remove provider"}, status=400)
+    
+    # move files to other providers
+    current_provider = other_providers.first()
+    for file in remove_provider_files:
+        while current_provider.total_size - current_provider.used_size < file.used_size:
+            # switch to next provider
+            other_providers = other_providers.exclude(provider_account=current_provider.provider_account)
+            if not other_providers.exists():
+                return JsonResponse({"status": "error", "message": "Not enough space to move files"}, status=400)
+            current_provider = other_providers.first()
+
+        # move file to current provider
+        try:
+            new_file_json = google_drive_opt.move_file_to_account(
+                remove_provider.access_token,
+                current_provider.access_token,
+                file.google_id,
+                current_provider.google_id
+            )
+
+            file.google_id = new_file_json['id']
+            file.space_providers = [p for p in file.space_providers if p != remove_provider_account]
+            file.save()
+        except google_drive_opt.ResponseError as e:
+            return JsonResponse({"status": "error", "message": f"Error moving file", "response": e.response}, status=e.response.status_code)
+        except Exception as e:
+            raise e
+
+    # remove provider
+    Provider.objects.filter(account=user, provider_account=remove_provider_account).delete()
+    group.space_providers = [p for p in group.space_providers if p != remove_provider_account]
+    group.save()
+    return JsonResponse({"status": "success", "message": "Provider removed successfully"})
+
 def set_password(request):
     if request.method == 'POST':
         new_pw = request.POST.get('new_password')
@@ -741,15 +840,16 @@ def bookmarks_init_api(request):
                 metadata: {
                     last_modified: "2025-04-07T02:06:22.107Z",
                     file_type: "root", 
-                    used_size: 2600880,
+                    used_size: 2600880,  // this is the file or folder or group used size in this webapp
                     
                     // only for file_type = "group"
-                    total_size: 10000000,
+                    total_size: 10000000,  // this is the total drive size add by all space providers total_size
                     spaceProviders: [
                         {
                         name: "a@example.com",
                         picture: "",
-                        total_size: 10000000,
+                        total_size: 10000000,  // this is the provider total drive size
+                        used_size: 2600880,  // this is the provider used size including all drive content
                         },
                     ]
                 }
@@ -820,6 +920,7 @@ def bookmarks_init_api(request):
                     'name': provider.provider_account,
                     'picture': provider.provider_picture,
                     'total_size': provider.total_size,
+                    'used_size': provider.used_size,
                 })
 
                 idToBookmark[bid]['metadata']['total_size'] += provider.total_size
@@ -965,7 +1066,6 @@ def download(request, bid):
     except Exception as e:
         return JsonResponse({"status": "error", "message": "File download failed"}, status=500)
 
-# TODO: check if the file is a group or folder
 def bookmark_move(request, bid):
     """
     move bid to another folder or group
@@ -976,11 +1076,13 @@ def bookmark_move(request, bid):
         return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
 
     ensure_cookie(request)
-
+    
     account = request.session.get('username', 'admin')
     if account == 'admin':
         return JsonResponse({"status": "error", "message": "admin can't move folder"}, status=400)
     
+    update_db_from_drive(account, update_provider_size=True, update_files=True)
+
     # get file info
     try:
         bookmark = Bookmarks.objects.get(bid=bid, account=account)
@@ -991,44 +1093,77 @@ def bookmark_move(request, bid):
     if bookmark.file_type == 'group' or bookmark.file_type == 'root':
         return JsonResponse({"status": "error", "message": "Can't move group or root folder"}, status=400)
     
-    # get new parent id
-    new_parent_id = request.POST.get("new_parent_id")
-    if new_parent_id == '0' or new_parent_id is None:
-        return JsonResponse({"status": "error", "message": f"Invalid parent_id {new_parent_id}"}, status=400)
+    # can't move to root
+    data = json.loads(request.body)
+    new_parent_id = data.get("new_parent_id")
+    if new_parent_id is None:
+        return JsonResponse({"status": "error", "message": f"Invalid new_parent_id {new_parent_id}"}, status=400)
     
     try:
         new_parent = Bookmarks.objects.get(bid=new_parent_id, account=account)
     except Bookmarks.DoesNotExist:
         return JsonResponse({"status": "error", "message": "New parent folder not found"}, status=404)
     
-    # check if the new parent id is a root
-    if new_parent.file_type == 'root':
-        return JsonResponse({"status": "error", "message": "Can't move to root folder"}, status=400)
+    # can't move to file
+    if new_parent.file_type != 'group' and new_parent.file_type != 'folder':
+        return JsonResponse({"status": "error", "message": "New parent folder must be a group or folder"}, status=400)
+
+    bookmark_ts = TreeStructure.objects.get(account=account, bookmark_foreignkey=bookmark)
+    new_parent_ts = TreeStructure.objects.get(account=account, bookmark_foreignkey=new_parent)
+    old_parent_ts = TreeStructure.objects.get(account=account, bid=bookmark_ts.parent_id)
+
+    # adjust tree structure (same as move)
+    bookmark_ts.parent_id = new_parent.bid
+    new_parent_ts.children_id = list(set(new_parent_ts.children_id + [bookmark.bid]))  
+    old_parent_ts.children_id = [cid for cid in old_parent_ts.children_id if cid != bookmark.bid]
+
+    bookmark_ts.save()
+    new_parent_ts.save()
+    old_parent_ts.save()
+
+    # if new parent in other group, move file to new parent group
+    new_parent_group = get_path_to_file(new_parent.bid, account)[1]
+    if new_parent_group == bookmark.space_providers[0]:
+        return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
     
-    # if the new parent is a group, need to deal with space_providers
-    if new_parent.file_type == 'group':
-        provider = Provider.objects.get(account=account, provider_account=new_parent.space_providers[0])
-        access_token = provider.access_token
-        temp_file_path = google_drive_opt.download_file(
-            access_token,
-            bookmark.google_id,
-            TEMP_DIR
-        )
+    # move file to new parent group
+    try:
+        move_bids = []
+        bfs_bid_queue = [bookmark.bid]
+        while len(bfs_bid_queue) > 0:
+            current_bid = bfs_bid_queue.pop(0)
+            move_bids.append(current_bid)
+            children = TreeStructure.objects.filter(account=account, parent_id=current_bid).values_list('bid', flat=True)
+            bfs_bid_queue.extend(children)
+        
+        for move_bid in move_bids:
+            move_bookmark = Bookmarks.objects.get(bid=move_bid, account=account)
+            from_provider = Provider.objects.get(account=account, provider_account=move_bookmark.space_providers[0])
+            from_access_token = from_provider.access_token
 
-        delete_response = google_drive_opt.delete_file(
-            access_token,
-            bookmark.google_id
-        )
+            new_provider = None
+            for provider in Provider.objects.filter(account=account, provider_account__in=new_parent.space_providers):
+                if provider.total_size - provider.used_size >= move_bookmark.used_size:
+                    new_provider = provider
+                    break
 
-        new_provider, upload_response, _ = upload_to_drive(account, temp_file_path, new_parent_id, bookmark.used_size)
-        bookmark.space_providers = [new_provider.provider_account]
-        bookmark.google_id = upload_response['id']
-        bookmark.save()
-
-    # deal with database
-    delete_db_file(bid, account)
-    add_db_bookmarks([bookmark], [new_parent_id], [account])
-    return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
+            if new_provider is None:
+                return JsonResponse({"status": "error", "message": "Not enough space in new parent group"}, status=400)
+            
+            to_access_token = new_provider.access_token
+            new_google_id = google_drive_opt.move_file_to_account(
+                from_access_token,
+                to_access_token,
+                move_bookmark.google_id,
+                new_provider.google_id
+            )['id']
+            move_bookmark.google_id = new_google_id
+            move_bookmark.space_providers = [new_provider.provider_account]
+            move_bookmark.save()
+    except google_drive_opt.ResponseError as e:
+        return JsonResponse({"status": "error", "message": f"Error moving file", "response": e.response}, status=e.response.status_code)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": "Error moving file"}, status=500)
 
 def bookmark_rename(request, bid):
     """
@@ -1051,7 +1186,7 @@ def bookmark_rename(request, bid):
     except Bookmarks.DoesNotExist:
         return JsonResponse({"status": "error", "message": "File not found"}, status=404)
     
-    # check if the file is a group or root
+    # check if the file is a root
     if bookmark.file_type == 'root':
         return JsonResponse({"status": "error", "message": "Can't rename root"}, status=400)
     
@@ -1112,11 +1247,16 @@ def bookmark_new_folder(request):
     parent_id = request_data.get("parent_id")
 
     if parent_id is None:
-        return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
+        return JsonResponse({"status": "error", "message": "Can't create root folder"}, status=400)
     
     file_type = new_folder_json['metadata']['file_type']
     if file_type != 'folder' and file_type != 'group':
         return JsonResponse({"status": "error", "message": f"Invalid file_type {file_type}"}, status=400)
+
+    if file_type == 'folder' and parent_id == '0':
+        return JsonResponse({"status": "error", "message": "Can't create folder in root"}, status=400)
+    if file_type == 'group' and parent_id != '0':
+        return JsonResponse({"status": "error", "message": "Group can only be created in root"}, status=400)
 
     # check if the file is a group
     if file_type == 'group':

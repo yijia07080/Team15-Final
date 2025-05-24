@@ -51,6 +51,7 @@ class Provider(models.Model):
     provider_name = models.CharField(max_length=200)
     provider_picture = models.URLField(blank=True)
     total_size = models.BigIntegerField(default=None, null=True, blank=True) 
+    used_size = models.BigIntegerField(default=None, null=True, blank=True)  # this size is included other google drive files, not only this web app files
     access_token = models.TextField(blank=True)
     refresh_token = models.TextField(blank=True)
     google_id = models.TextField(default=None, null=True, blank=True)  # google drive folder id for put files of this web app

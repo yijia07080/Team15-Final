@@ -394,7 +394,7 @@ class BookmarksTree {
     // google oauth2 => backend => redirect to frontend (/ProviderOauth2Bridge)
     // => /ProviderOauth2Bridge send window.postMessage => original window receive message
     // => original window request backend to update new data
-    const clientId = '488776431237-iqnrui5o43arlrm357sig0b7vtinb45m.apps.googleusercontent.com'
+    const clientId = '488776431237-lkq7u7ds5pgjnhcgdltl7o4cq60t151p.apps.googleusercontent.com';
     const redirectUri = 'http://localhost:8000/provider-oauth2callback/'
     const state = encodeURIComponent(JSON.stringify({
       groupId: groupId,
@@ -487,12 +487,28 @@ class BookmarksTree {
       throw new Error("Only group bookmarks can have space providers.");
     }
 
-    // TODO: 告知後端刪除 provider
-
-
     bookmark.metadata.spaceProviders = bookmark.metadata.spaceProviders.filter(
       (p) => p.name !== provider.name,
     );
+
+    $.ajax({
+      url: 'http://localhost:8000/api/bookmarks/remove_provider/<int:bid>' + id,
+      type: 'POST',
+      contentType: 'application/json',
+      crossDomain: true,
+      xhrFields: {
+          withCredentials: true
+      },
+      data: JSON.stringify({
+        provider_account: provider,
+      }),
+      success: function (data) {
+        console.log("Server remove provider success:", data);
+      },
+      error: function (xhr, status, error) {
+        console.error('Server remove provider error:', error);
+      }
+    });
   }
   
   // 根據你傳入的標籤，對網頁渲染

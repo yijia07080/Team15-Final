@@ -14,7 +14,7 @@ const Navbar = () => {
 
   // 註冊相關
   const handleAuthClick = () => {
-    const clientId = '488776431237-iqnrui5o43arlrm357sig0b7vtinb45m.apps.googleusercontent.com'
+    const clientId = '488776431237-lkq7u7ds5pgjnhcgdltl7o4cq60t151p.apps.googleusercontent.com'
     const redirectUri = 'http://localhost:8000/oauth2callback/'
     const scope = 'openid email profile https://www.googleapis.com/auth/drive'
     const authUrl = [

@@ -6,7 +6,7 @@ const ProviderOauth2Bridge = () => {
     if (window.opener) {
         window.opener.postMessage(
             {type: 'providerOauth2End'}, 
-            "http://localhost:5174" // 確保這裡的 URL 與你的主頁 URL 相符
+            "http://localhost:5174/" // 確保這裡的 URL 與你的主頁 URL 相符
         );
         window.close();
     }
