@@ -29,6 +29,8 @@ TEMP_DIR = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
 if not TEMP_DIR.exists():
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+DRIVE_ROOT_FOLDER = "Team 15 Web App Container"
+
 password_reset_tokens = {}
 
 # some utils
@@ -553,7 +555,7 @@ def oauth2callback(request):
         defaults={'name': name, 'picture': picture, 'password': ''}
     )
     try:
-        drive_root_folder = google_drive_opt.create_folder(access_token, "Team 15 Web App Container")
+        drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)
         limit_size, used_size = google_drive_opt.get_account_size(access_token)
     except google_drive_opt.ResponseError as e:
         return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
@@ -621,6 +623,90 @@ def oauth2callback(request):
     request.session.set_expiry(60 * 60 * 24 * 7)
     return render(request, 'password.html')
 
+def provider_oauth2callback(request):
+    """
+    OAuth2 callback for provider login.
+    This is used to register a new provider account.
+    Oauth2 should include state:
+    {
+        "group_id": <group_id>,
+        "redirect_url": <redirect_url>
+    }
+    """
+    if request.method != 'GET':
+        return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
+
+    ensure_cookie(request)
+
+    state = request.GET.get('state')
+
+    account = request.session.get('username', 'admin')
+    if not account:
+        return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
+    user = User.objects.get(account=account)
+
+    group_id = state.get('group_id')
+    try:
+        group = Bookmarks.objects.get(bid=group_id, account=user)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Group not found"}, status=404)
+    if group.file_type != "group":
+        return JsonResponse({"status": "error", "message": "Not a group"}, status=400)
+
+    code = request.GET.get('code')
+    token_resp = requests.post(
+        'https://oauth2.googleapis.com/token',
+        data={
+            'code': code,
+            'client_id': settings.CLIENT_ID,
+            'client_secret': settings.CLIENT_SECRET,
+            'redirect_uri': settings.REDIRECT_URI,
+            'grant_type': 'authorization_code'
+        }
+    )
+    tokens = token_resp.json()
+    access_token = tokens.get('access_token')
+    refresh_token = tokens.get('refresh_token')
+
+    provider_info_response = requests.get(
+        'https://openidconnect.googleapis.com/v1/userinfo',
+        headers={'Authorization': f'Bearer {access_token}'}
+    )
+
+    provider_info = provider_info_response.json()
+    email = provider_info.get('email')
+    name = provider_info.get('name')
+    picture = provider_info.get('picture')
+
+    # init google drive folder
+    try:
+        drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)
+        limit_size, used_size = google_drive_opt.get_account_size(access_token)
+    except google_drive_opt.ResponseError as e:
+        return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+    except Exception as e:
+        raise e
+    total_size = limit_size - used_size
+    provider, created = Provider.objects.update_or_create(
+        account=user,
+        defaults={
+            'provider_account': email,
+            'provider_name': name,
+            'provider_picture': picture,
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'google_id': drive_root_folder['id'],
+            'total_size': total_size,
+        }
+    )
+
+    # add provider to group
+    if provider.provider_account not in group.space_providers:
+        group.space_providers.append(provider.provider_account)
+        group.save()
+
+    return redirect(state.get('redirect_url'))
+                    
 def set_password(request):
     if request.method == 'POST':
         new_pw = request.POST.get('new_password')

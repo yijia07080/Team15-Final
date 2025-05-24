@@ -1,6 +1,9 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import { BookmarksProvider } from "./context/BookmarksContext";
 import { UploadProvider } from "./context/UploadContext";
 import { DownloadProvider } from "./context/DownloadContext";
+import ProviderOauth2Bridge from "./components/providerOauth2Bridge";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import Breadcrumb from "./components/Breadcrumb";
@@ -29,9 +32,16 @@ function App() {
     <DownloadProvider>
       <UploadProvider>
         <BookmarksProvider>
-          <Layout>
-            <MainContent />
-          </Layout>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={
+                <Layout>
+                  <MainContent />
+                </Layout>
+              } />
+              <Route path="/oauth2-bridge" element={<ProviderOauth2Bridge />} />
+            </Routes>
+          </BrowserRouter>
         </BookmarksProvider>
       </UploadProvider>
     </DownloadProvider>

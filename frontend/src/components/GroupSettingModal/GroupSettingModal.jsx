@@ -26,19 +26,7 @@ const GroupSettingModal = ({ onClose, groupId }) => {
 
   // 新增空間提供者相關
   const handleAuthClick = () => {
-    const clientId = '488776431237-iqnrui5o43arlrm357sig0b7vtinb45m.apps.googleusercontent.com'
-    const redirectUri = ''  // TODO: 這裡要改成後端的網址，需與註冊用的不同
-    const scope = 'openid email profile https://www.googleapis.com/auth/drive'
-    const authUrl = [
-      'https://accounts.google.com/o/oauth2/v2/auth',
-      `?client_id=${clientId}`,
-      `&redirect_uri=${encodeURIComponent(redirectUri)}`,
-      `&response_type=code`,
-      `&scope=${encodeURIComponent(scope)}`,
-      `&access_type=offline`,
-      `&prompt=consent`
-    ].join('')
-    window.location.href = authUrl
+    bookmarksTree.addProivder(groupId)
   };
   
   const handleNameChange = e => {

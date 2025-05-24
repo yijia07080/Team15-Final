@@ -1,6 +1,7 @@
 import Cookies from "js-cookie";
 import $ from "jquery";
 
+
 class BookmarksTree {
   constructor(userInfo, treeStructure = null, idToBookmark = null, uploadStatusContext, onUpdate) {
     // 紀錄用戶名稱，訪客為 admin
@@ -356,14 +357,90 @@ class BookmarksTree {
     this.onUpdate();
   }
 
-  addProivder() {
-    // TODO: implement add provider
-    // open new window oauth 2.0 
-    // => oauth success and redirect to backend
-    // => backend save provider info
-    // => backend redirect to another frontend page
-    // => frontend post message to main frontend window notify success
-    // => main frontend window request new provider info from backend
+  requestUpdateWithBackend() {
+    let userInfo = null;
+    let treeStructure = null;
+    let idToBookmark = null;
+    $.ajax({
+      url: 'http://localhost:8000/api/bookmarks/init',
+      type: 'POST',
+      contentType: 'application/json',
+      crossDomain: true,
+      xhrFields: {
+          withCredentials: true
+      },
+      success: function (data) {
+          userInfo = data.userInfo;
+          treeStructure = data.treeStructure;
+          idToBookmark = data.idToBookmark;
+
+          console.log('init data from server');
+          console.log('username', userInfo);
+          console.log('treeStructure', treeStructure);
+          console.log('idToBookmark', idToBookmark);
+
+          this._buildTree(treeStructure, idToBookmark);
+          this.userInfo = userInfo;
+          this.onUpdate();
+      },
+      error: function (xhr, status, error) {
+          console.error('Error:', error);
+      }
+    })
+  }
+
+  addProivder(groupId) {
+    // open new window to google oauth2
+    // google oauth2 => backend => redirect to frontend (/ProviderOauth2Bridge)
+    // => /ProviderOauth2Bridge send window.postMessage => original window receive message
+    // => original window request backend to update new data
+    const clientId = '488776431237-iqnrui5o43arlrm357sig0b7vtinb45m.apps.googleusercontent.com'
+    const redirectUri = 'http://localhost:8000/provider-oauth2callback/'
+    const state = encodeURIComponent(JSON.stringify({
+      groupId: groupId,
+      redirectBridge: 'http://localhost:5174/oauth2-bridge'
+    }));
+    const scope = 'openid email profile https://www.googleapis.com/auth/drive'
+    const authUrl = [
+      'https://accounts.google.com/o/oauth2/v2/auth',
+      `?client_id=${clientId}`,
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`,
+      `&state=${state}`,
+      `&response_type=code`,
+      `&scope=${encodeURIComponent(scope)}`,
+      `&access_type=offline`,
+      `&prompt=consent`
+    ].join('')
+    const authWindow = window.open(authUrl, '_blank', 'width=600,height=600');
+
+    new Promise((resolve, reject) => {
+      window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin) {
+          return;
+        }
+        if (event.data && event.data.type === 'providerOauth2End') {
+          resolve();
+        } else {
+          reject(event.data);
+        }
+
+        // 等待 30 秒後timeout
+        setTimeout(() => {
+          reject(new Error("OAuth2 authentication timed out."));
+        }, 30000);
+      }, { once: true });
+
+    }).then(() => {
+      this.requestUpdateWithBackend();
+
+    }).catch((error) => {
+      console.error("Provider OAuth2 failed:", error);
+
+    }).finally(() => {
+      if (authWindow) {
+        authWindow.close();
+      }
+    });
   }
 
   // 遞迴刪除 node id 以下的所有節點(含自身)，並通知 React 更新
@@ -411,6 +488,7 @@ class BookmarksTree {
     }
 
     // TODO: 告知後端刪除 provider
+
 
     bookmark.metadata.spaceProviders = bookmark.metadata.spaceProviders.filter(
       (p) => p.name !== provider.name,

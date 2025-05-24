@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from api.views import upload_file, download
 from api.views import get_csrf, bookmarks_init_api, bookmark_move, bookmark_rename, bookmark_new_folder, bookmark_delete
-from api.views import login_view, logout_view, oauth2callback, set_password, forgot_password, reset_password
+from api.views import login_view, logout_view, oauth2callback, set_password, forgot_password, reset_password, provider_oauth2callback
 
 urlpatterns = [
     path('api/upload', upload_file, name='upload_file'),
@@ -39,4 +39,5 @@ urlpatterns = [
     path('password/', set_password, name='password'),
     path('forgot-password/', forgot_password, name='forgot_password'),
     path('reset-password/<str:token>/', reset_password, name='reset_password'),
+    path('provider-oauth2callback/', provider_oauth2callback, name='provider_oauth2callback'),
 ]
