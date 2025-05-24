@@ -148,6 +148,26 @@ class BookmarksTree {
       this.idToBookmark[groupId].metadata.last_modified = now;
     }
 
+    // backend
+    $.ajax({
+        url: 'http://localhost:8000/api/bookmark/move/' + id,
+        type: 'POST',
+        contentType: 'application/json',
+        crossDomain: true,
+        xhrFields: {
+            withCredentials: true
+        },
+        data: JSON.stringify({
+          new_parent_id: groupId,
+        }),
+        success: function (data) {
+            console.log("Server delete success:", data);
+        },
+        error: function (xhr, status, error) {
+            console.error('Server delete error:', error);
+        }
+    });
+
     // 通知 React 更新
     this.onUpdate();
   }
@@ -378,6 +398,26 @@ class BookmarksTree {
   changeBookmarkName(id, newName) {
     if (this.idToBookmark[id]) {
       this.idToBookmark[id].name = newName;
+
+      $.ajax({
+        url: 'http://localhost:8000/api/bookmark/rename/' + id,
+        type: 'POST',
+        contentType: 'application/json',
+        crossDomain: true,
+        xhrFields: {
+            withCredentials: true
+        },
+      data: JSON.stringify({
+          new_name: newName,
+        }),
+      success: function (data) {
+          console.log("Server delete success:", data);
+        },
+      error: function (xhr, status, error) {
+          console.error('Server delete error:', error);
+        }
+      });
+      
       this.onUpdate();
     } else {
       console.error(`Bookmark with id ${id} does not exist.`);

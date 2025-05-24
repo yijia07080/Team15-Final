@@ -181,3 +181,19 @@ def delete_file(access_token, file_id):
         return True
     else:
         raise Exception(f"Error: {response.status_code}, {response.text}")
+    
+def rename_file(access_token, file_id, new_name):
+    url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    body = {
+        "name": new_name
+    }
+    response = requests.patch(url, headers=headers, json=body)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Error: {response.status_code}, {response.text}")

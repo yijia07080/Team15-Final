@@ -24,9 +24,9 @@ from . import google_drive_opt
 
 logger = logging.getLogger(__name__)
 
-temp_dir = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
-if not temp_dir.exists():
-    temp_dir.mkdir(parents=True, exist_ok=True)
+TEMP_DIR = Path(tempfile.gettempdir())  # in docker, this is ~/tmp
+if not TEMP_DIR.exists():
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 password_reset_tokens = {}
 
@@ -175,6 +175,38 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
                 # update provider's avaliable size
                 Provider.objects.filter(account=account, provider_account=provider.provider_account).update(total_size=total_size)
 
+def upload_to_drive(account, local_file_path, parent_id, used_size):
+    '''
+    returns: upload_provider, upload_response, parent_group_bid
+    '''
+    # decide upload to which provider
+    update_db_from_drive(account, update_provider_size=True)
+    path_bid = get_path_to_file(parent_id, account)
+    group = Bookmarks.objects.get(bid=path_bid[1], account=account)
+    upload_providers = Provider.objects.filter(account=account, provider_account__in=group.space_providers)
+    upload_provider = None
+    for provider in upload_providers:
+        if provider.total_size > used_size:
+            upload_provider = provider
+            break
+
+    if upload_provider is None:
+        return JsonResponse({"status": "error", "message": "No available provider"}, status=400)
+    
+    # upload file to google drive
+    try:
+        upload_respone = google_drive_opt.upload_file(
+            upload_provider.access_token,
+            local_file_path,
+            upload_provider.google_id
+        )
+    except Exception as e:
+        raise e
+
+    if upload_respone.status_code != 200:
+        return JsonResponse({"status": "error", "message": "Upload failed", "error": upload_respone.text}, status=400)
+    
+    return upload_provider, upload_respone, path_bid[1]
 
 @ensure_csrf_cookie
 def get_csrf(request):
@@ -707,7 +739,7 @@ def upload_file(request):
         return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
     
     file_stem, file_suffix = file.name.split('.')
-    temp_file_path = temp_dir / f"{file_stem}-{secrets.token_hex(16)}.{file_suffix}"
+    temp_file_path = TEMP_DIR / f"{file_stem}-{secrets.token_hex(16)}.{file_suffix}"
 
     if file:
         with open(temp_file_path, "wb+") as destination:
@@ -718,30 +750,7 @@ def upload_file(request):
         if account == 'admin':
             return JsonResponse({"status": "success", "message": "File uploaded successfully. (admin)"}, status=200)
 
-        # decide upload to which provider
-        update_db_from_drive(account, update_provider_size=True)
-        path_bid = get_path_to_file(parent_id, account)
-        group = Bookmarks.objects.get(bid=path_bid[1], account=account)
-        upload_providers = Provider.objects.filter(account=account, provider_account__in=group.space_providers)
-        upload_provider = None
-        for provider in upload_providers:
-            if provider.total_size > bookmark_json['metadata']['used_size']:
-                upload_provider = provider
-                break
-
-        if upload_provider is None:
-            return JsonResponse({"status": "error", "message": "No available provider"}, status=400)
-        
-        # upload file to google drive
-        try:
-            upload_respone = google_drive_opt.upload_file(
-                upload_provider.access_token,
-                temp_file_path,
-                upload_provider.google_id
-            )
-        except Exception as e:
-            logger.error(f"Failed to upload file: {e}")
-            return JsonResponse({"status": "error", "message": "File upload failed"}, status=500)
+        upload_provider, upload_respone, parent_group_bid = upload_to_drive(account, temp_file_path, parent_id, bookmark_json['metadata']['used_size'])
     
         # add to database
         new_bookmark_obj = Bookmarks(
@@ -761,8 +770,8 @@ def upload_file(request):
         add_db_bookmarks([new_bookmark_obj], [parent_id], [account])
 
         # get new group used size
-        group = Bookmarks.objects.get(bid=path_bid[1], account=account)
-        group_used_size_response = {path_bid[1]: group.used_size}
+        group = Bookmarks.objects.get(bid=parent_group_bid, account=account)
+        group_used_size_response = {parent_group_bid: group.used_size}
         return JsonResponse({
             "status": "success", 
             "message": "File uploaded successfully", 
@@ -799,7 +808,7 @@ def download_file(request, bid):
         local_file_path = google_drive_opt.download_file(
             access_token,
             bookmark.google_id,
-            temp_dir 
+            TEMP_DIR 
         )
 
         if local_file_path:
@@ -815,3 +824,113 @@ def download_file(request, bid):
         logger.error(f"Failed to download file: {e}")
         return JsonResponse({"status": "error", "message": "File download failed"}, status=500)
 
+def bookmark_move(request, bid):
+    """
+    move bid to another folder or group
+    request should be form-data and include:
+    - new_parent_id: the new parent bid of the file
+    """
+    if request.method == 'GET':
+        return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+    if account == 'admin':
+        return JsonResponse({"status": "error", "message": "admin can't move folder"}, status=400)
+    
+    # get file info
+    try:
+        bookmark = Bookmarks.objects.get(bid=bid, account=account)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "File not found"}, status=404)
+    
+    # check if the file is a group or root
+    if bookmark.file_type == 'group' or bookmark.file_type == 'root':
+        return JsonResponse({"status": "error", "message": "Can't move group or root folder"}, status=400)
+    
+    # get new parent id
+    new_parent_id = request.POST.get("new_parent_id")
+    if new_parent_id == '0' or new_parent_id is None:
+        return JsonResponse({"status": "error", "message": f"Invalid parent_id {new_parent_id}"}, status=400)
+    
+    try:
+        new_parent = Bookmarks.objects.get(bid=new_parent_id, account=account)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "New parent folder not found"}, status=404)
+    
+    # check if the new parent id is a root
+    if new_parent.file_type == 'root':
+        return JsonResponse({"status": "error", "message": "Can't move to root folder"}, status=400)
+    
+    # if the new parent is a group, need to deal with space_providers
+    if new_parent.file_type == 'group':
+        provider = Provider.objects.get(account=account, provider_account=new_parent.space_providers[0])
+        access_token = provider.access_token
+        temp_file_path = google_drive_opt.download_file(
+            access_token,
+            bookmark.google_id,
+            TEMP_DIR
+        )
+
+        delete_response = google_drive_opt.delete_file(
+            access_token,
+            bookmark.google_id
+        )
+
+        new_provider, upload_response, _ = upload_to_drive(account, temp_file_path, new_parent_id, bookmark.used_size)
+        bookmark.space_providers = [new_provider.provider_account]
+        bookmark.google_id = upload_response['id']
+        bookmark.save()
+
+    # deal with database
+    delete_db_bookmark(bid, account)
+    add_db_bookmarks([bookmark], [new_parent_id], [account])
+    return JsonResponse({"status": "success", "message": "File moved successfully"}, status=200)
+
+def bookmark_rename(request, bid):
+    """
+    rename bookmark
+    request should be form-data and include:
+    - new_name: the new name of the file
+    """
+    if request.method == 'GET':
+        return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+    if account == 'admin':
+        return JsonResponse({"status": "error", "message": "admin can't rename folder"}, status=400)
+    
+    # get file info
+    try:
+        bookmark = Bookmarks.objects.get(bid=bid, account=account)
+    except Bookmarks.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "File not found"}, status=404)
+    
+    # check if the file is a group or root
+    if bookmark.file_type == 'root':
+        return JsonResponse({"status": "error", "message": "Can't rename root"}, status=400)
+    
+    # get new name
+    new_name = request.POST.get("new_name")
+    if new_name is None:
+        return JsonResponse({"status": "error", "message": f"Invalid name {new_name}"}, status=400)
+    
+    # update database
+    bookmark.name = new_name
+    bookmark.save()
+
+    # update google drive
+    if bookmark.file_type != 'group' or bookmark.file_type != 'folder':
+        provider = Provider.objects.get(account=account, provider_account=bookmark.space_providers[0])
+        access_token = provider.access_token
+        new_name_tokens = new_name.split('.')
+        google_drive_opt.rename_file(
+            access_token,
+            bookmark.google_id,
+            new_name_tokens[0] + f'-{secrets.token_hex(16)}.' + new_name_tokens[1]
+        )
+    
+    return JsonResponse({"status": "success", "message": "File renamed successfully"}, status=200)
