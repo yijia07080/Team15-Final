@@ -1241,15 +1241,14 @@ def bookmark_delete(request, bid, enforce=False):
         return JsonResponse({"status": "error", "message": "Can't delete root"}, status=400)
     
     delete_bids = []
-    if bookmark.file_type == 'group' or bookmark.file_type == 'folder':
-        bfs_bid_queue = [bookmark.bid]
-        while len(bfs_bid_queue) > 0:
-            current_bid = bfs_bid_queue.pop(0)
-            delete_bids.append(current_bid)
-            children = TreeStructure.objects.filter(account=account, parent_id=current_bid).values_list('bid', flat=True)
-            bfs_bid_queue.extend(children)
-    
-    if len(delete_bids) > 1 and not enforce:
+    bfs_bid_queue = [bookmark.bid]
+    while len(bfs_bid_queue) > 0:
+        current_bid = bfs_bid_queue.pop(0)
+        delete_bids.append(current_bid)
+        children = TreeStructure.objects.filter(account=account, parent_id=current_bid).values_list('bid', flat=True)
+        bfs_bid_queue.extend(children)
+
+    if len(delete_bids) > 2 and not enforce:
         return JsonResponse({"status": "error", "message": "Can't delete multiple files at once"}, status=400)
     
     delete_bookmarks = Bookmarks.objects.filter(bid__in=delete_bids, account=account)
