@@ -15,14 +15,15 @@ def get_account_size(access_token):
     response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:
         storage_quota = response.json().get('storageQuota', {})
-        total_size = storage_quota.get('limit', 0)
-        used_size = storage_quota.get('usage', 0)
-        return total_size, used_size
+        limit_size = float(storage_quota.get('limit', 0))
+        used_size = float(storage_quota.get('usage', 0))
+        return limit_size, used_size
     else:
         raise response
 
-def get_file_list(access_token, folder_id):
+def get_file_list(access_token, folder_id, trashed=False):
     '''
+    if trashed = True, return will include trashed files
     return file list {
         "id": ...,
         "name": ...,
@@ -36,7 +37,7 @@ def get_file_list(access_token, folder_id):
         "authorization": f"Bearer {access_token}",
     }
     params = {
-        "q": f"'{folder_id}' in parents",
+        "q": f"'{folder_id}' in parents and trashed = {str(trashed).lower()}",
         "fields": "files(id, name, size)",
         "pageSize": 1000
     }

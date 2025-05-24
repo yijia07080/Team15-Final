@@ -153,7 +153,8 @@ def update_db_from_drive(account, update_provider_size=False, update_files=False
     if update_provider_size:
         for provider in Provider.objects.filter(account=account):
             access_token = provider.access_token
-            total_size = google_drive_opt.get_account_size(access_token)[0]
+            limit_size, used_size = google_drive_opt.get_account_size(access_token)
+            total_size = limit_size - used_size
             if provider.total_size != total_size:
                 # update provider's avaliable size
                 Provider.objects.filter(account=account, provider_account=provider.provider_account).update(total_size=total_size)
@@ -243,110 +244,6 @@ def reset_password(request, token):
         return redirect('login')
     
     return render(request, 'reset_password.html', {'token': token})
-
-def upload_file(request):
-    """
-    API for uploading files.
-    request should be form-data and include:
-    - file: the file to upload
-    - new_bookmark: the bookmark item to upload
-        {
-            id,
-            name,
-            url,
-            tags,
-            img,
-            hidden,
-            metadata: {
-                last_modified,
-                file_type,
-                used_size,
-            },
-        }
-    - parent_id: the parent bookmark id
-
-    returns:
-    {
-        "status": "success",
-        "message": "File uploaded successfully"
-        "group_used_size": {group id: used size},
-    }
-    """
-    if request.method == 'GET':
-        return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
-
-    ensure_cookie(request)
-
-    account = request.session.get('username', 'admin')
-
-    file = request.FILES.get("file")
-    bookmark_json = json.loads(request.POST.get("new_bookmark"))
-    parent_id = request.POST.get("parent_id")
-    
-    temp_file_path = temp_dir / f"{secrets.token_hex(16)}.{file.name.split('.')[-1]}"
-
-    if file:
-        with open(temp_file_path, "wb+") as destination:
-            for chunk in file.chunks():
-                destination.write(chunk)
-
-        # just for guest
-        if account == 'admin':
-            return JsonResponse({"status": "success", "message": "File uploaded successfully. (admin)"}, status=200)
-
-        # decide upload to which provider
-        update_db_from_drive(account, update_provider_size=True)
-        path_bid = get_path_to_file(parent_id, account)
-        group = Bookmarks.objects.get(bid=path_bid[1], account=account)
-        upload_providers = Provider.objects.filter(account=account, provider_account__in=group.space_providers)
-        upload_provider = None
-        for provider in upload_providers:
-            if provider.total_size > bookmark_json['metadata']['used_size']:
-                upload_provider = provider
-                break
-
-        if upload_provider is None:
-            return JsonResponse({"status": "error", "message": "No available provider"}, status=400)
-        
-        # upload file to google drive
-        try:
-            upload_respone = google_drive_opt.upload_file(
-                upload_provider.access_token,
-                temp_file_path,
-                upload_provider.google_id
-            )
-        except Exception as e:
-            logger.error(f"Failed to upload file: {e}")
-            return JsonResponse({"status": "error", "message": "File upload failed"}, status=500)
-    
-        # add to database
-        new_bookmark_obj = Bookmarks(
-            account=User.objects.get(account=account),
-            bid=bookmark_json['id'],
-            url=bookmark_json['url'],
-            img=bookmark_json['img'],
-            name=bookmark_json['name'],
-            tags=bookmark_json['tags'],
-            hidden=bookmark_json['hidden'],
-            last_modified=bookmark_json['metadata']['last_modified'],
-            file_type=bookmark_json['metadata']['file_type'],
-            used_size=bookmark_json['metadata']['used_size'],
-            space_providers=bookmark_json['metadata'].get('space_providers', []),
-            google_id=upload_respone['id'],
-        )
-        add_db_bookmarks([new_bookmark_obj], [parent_id], [account])
-
-        # get new group used size
-        group = Bookmarks.objects.get(bid=path_bid[1], account=account)
-        group_used_size_response = {path_bid[1]: group.used_size}
-        return JsonResponse({
-            "status": "success", 
-            "message": "File uploaded successfully", 
-            "group_used_size": group_used_size_response}, 
-            status=200
-        )
-    else:
-        return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
 
 # Request rate limit
 def rate_limit(view_func):
@@ -559,7 +456,8 @@ def oauth2callback(request):
     )
 
     drive_root_folder = google_drive_opt.create_folder(access_token, "Team 15 Web App Container")
-    total_size = google_drive_opt.get_account_size(access_token)[0]
+    limit_size, used_size = google_drive_opt.get_account_size(access_token)
+    total_size = limit_size - used_size
     provider, created = Provider.objects.update_or_create(
         account=user,
         defaults={
@@ -748,3 +646,116 @@ def bookmarks_init_api(request):
     }
     return JsonResponse(response_data)
 
+def upload_file(request):
+    """
+    API for uploading files.
+    request should be form-data and include:
+    - file: the file to upload
+    - new_bookmark: the bookmark item to upload
+        {
+            id,
+            name,
+            url,
+            tags,
+            img,
+            hidden,
+            metadata: {
+                last_modified,
+                file_type,
+                used_size,
+            },
+        }
+    - parent_id: the parent bid of the file
+
+    returns:
+    {
+        "status": "success",
+        "message": "File uploaded successfully"
+        "group_used_size": {group id: used size},
+    }
+    """
+    if request.method == 'GET':
+        return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+
+    ensure_cookie(request)
+
+    account = request.session.get('username', 'admin')
+
+    file = request.FILES.get("file")
+    bookmark_json = json.loads(request.POST.get("new_bookmark"))
+    parent_id = request.POST.get("parent_id")
+
+    if parent_id == '0' or parent_id is None:
+        return JsonResponse({"status": "error", "message": f"Invalid parent_id {parent_id}"}, status=400)
+    
+    file_stem, file_suffix = file.name.split('.')
+    temp_file_path = temp_dir / f"{file_stem}-{secrets.token_hex(16)}.{file_suffix}"
+
+    if file:
+        with open(temp_file_path, "wb+") as destination:
+            for chunk in file.chunks():
+                destination.write(chunk)
+
+        # just for guest
+        if account == 'admin':
+            return JsonResponse({"status": "success", "message": "File uploaded successfully. (admin)"}, status=200)
+
+        # decide upload to which provider
+        update_db_from_drive(account, update_provider_size=True)
+        path_bid = get_path_to_file(parent_id, account)
+        group = Bookmarks.objects.get(bid=path_bid[1], account=account)
+        upload_providers = Provider.objects.filter(account=account, provider_account__in=group.space_providers)
+        upload_provider = None
+        for provider in upload_providers:
+            if provider.total_size > bookmark_json['metadata']['used_size']:
+                upload_provider = provider
+                break
+
+        if upload_provider is None:
+            return JsonResponse({"status": "error", "message": "No available provider"}, status=400)
+        
+        # upload file to google drive
+        try:
+            upload_respone = google_drive_opt.upload_file(
+                upload_provider.access_token,
+                temp_file_path,
+                upload_provider.google_id
+            )
+        except Exception as e:
+            logger.error(f"Failed to upload file: {e}")
+            return JsonResponse({"status": "error", "message": "File upload failed"}, status=500)
+    
+        # add to database
+        new_bookmark_obj = Bookmarks(
+            account=User.objects.get(account=account),
+            bid=bookmark_json['id'],
+            url=bookmark_json['url'],
+            img=bookmark_json['img'],
+            name=bookmark_json['name'],
+            tags=bookmark_json['tags'],
+            hidden=bookmark_json['hidden'],
+            last_modified=bookmark_json['metadata']['last_modified'],
+            file_type=bookmark_json['metadata']['file_type'],
+            used_size=bookmark_json['metadata']['used_size'],
+            space_providers=[upload_provider.provider_account],
+            google_id=upload_respone['id'],
+        )
+        add_db_bookmarks([new_bookmark_obj], [parent_id], [account])
+
+        # get new group used size
+        group = Bookmarks.objects.get(bid=path_bid[1], account=account)
+        group_used_size_response = {path_bid[1]: group.used_size}
+        return JsonResponse({
+            "status": "success", 
+            "message": "File uploaded successfully", 
+            "group_used_size": group_used_size_response}, 
+            status=200
+        )
+    else:
+        return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
+    
+def download_file(request):
+    '''
+    request:
+    - 
+    '''

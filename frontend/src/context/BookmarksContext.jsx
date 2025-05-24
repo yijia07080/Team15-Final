@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useRef } from "react";
 import UploadContext from '../context/UploadContext';
 import BookmarksTree from "./BookmarksTree.js";
-import { userInfo, treeStructure, idToFile } from "../utils/tempDB.js";
-// import { treeStructure, idToBookmark, userInfo } from "../utils/init.js";
+// import { userInfo, treeStructure, idToFile } from "../utils/tempDB.js";
+import { userInfo, treeStructure, idToFile  } from "../utils/init.js";
 
 const BookmarksContext = createContext();
 

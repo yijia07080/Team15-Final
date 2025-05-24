@@ -48,4 +48,4 @@ await $.ajax({
     }
 })
 
-export { treeStructure, idToBookmark, userInfo };
+export { userInfo, treeStructure, idToBookmark as idToFile };

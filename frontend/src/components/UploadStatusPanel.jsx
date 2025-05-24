@@ -9,9 +9,10 @@ const UploadStatusPanel = () => {
 
   return (
     <div className="upload-status-container">
-      {uploadStatus.uploads.map(({ id, filename, progress }) => (
+      {uploadStatus.uploads.map(({ id, filename, printStatus, progress }) => (
         <div key={id} className="upload-item">
           <div className="upload-info">{filename}</div>
+          <div className="upload-status">{printStatus}</div>
           <progress value={progress} max="100" className="upload-progress" />
           <img 
             src={imageMap["close.png"]} alt="Cancel" className="cancel-button"

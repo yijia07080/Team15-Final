@@ -192,6 +192,9 @@ class BookmarksTree {
         if (event.lengthComputable) {
           const percentComplete = Math.round((event.loaded / event.total) * 100);
           this.uploadStatus.updateUploadProgress(id, percentComplete);
+          if (percentComplete === 100) {
+            this.uploadStatus.updateUploadPrintStatus(id, "Waiting for upload to drive");
+          }
         }
       };
       xhr.onreadystatechange = () => {
@@ -202,8 +205,10 @@ class BookmarksTree {
 
       xhr.onload = () => {
         if (xhr.status === 200) {
+          this.uploadStatus.endUpload(id, "Upload successful");
           resolve(xhr.response);
         } else {
+          this.uploadStatus.endUpload(id, "Upload failed");
           reject(xhr.response);
         }
       };
@@ -227,7 +232,6 @@ class BookmarksTree {
 
       console.error("Upload failed:", error);
       if (error === "Upload aborted") {console.log("Upload rollback success");}
-      this.uploadStatus.cancelUpload(id);
     });
   }
 

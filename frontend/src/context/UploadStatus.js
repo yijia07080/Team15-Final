@@ -1,8 +1,9 @@
 class UploadStatus {
     constructor(onUpdate) {
         this.onUpdate = onUpdate;
-        this.uploads = [];  // Array of { id, filename, progress, abortController }
-        this.complete_remove_timeout = 1500;  // Time in ms to wait before removing completed uploads
+        this.uploads = [];  // Array of { id, filename, printStatus, progress, abortController }
+        this.endRemoveTimeout = 5000;  // Time in ms to wait before removing completed uploads
+        this.cancelRemoveTimeout = 5000;  // Time in ms to wait before removing cancelled uploads
     }
 
     getLength() {
@@ -23,20 +24,28 @@ class UploadStatus {
             })
         }
 
-        this.uploads.push({ id: id, filename: filename, progress: 0, abortController: abortController });
+        this.uploads.push({ id: id, filename: filename, printStatus: "", progress: 0, abortController: abortController });
         this.onUpdate();
     }
 
     updateUploadProgress(id, progress) {
-        // Remove the upload if progress is 100
         this.uploads = this.uploads.map((u) => (u.id === id ? { ...u, progress: progress } : u));
-        if (progress === 100) {
-            setTimeout(() => {
-                this.uploads = this.uploads.filter((u) => u.id !== id);
-                this.onUpdate();
-            }, this.complete_remove_timeout);
-        }
         this.onUpdate();
+    }
+
+    updateUploadPrintStatus(id, printStatus) {
+        this.uploads = this.uploads.map((u) => (u.id === id ? { ...u, printStatus: printStatus } : u));
+        this.onUpdate();
+    }
+
+    endUpload(id, printStatus) {
+        this.uploads = this.uploads.map((u) => (u.id === id ? { ...u, printStatus: printStatus } : u));
+        this.onUpdate();
+
+        setTimeout(() => {
+            this.uploads = this.uploads.filter((u) => u.id !== id);
+            this.onUpdate();
+        }, this.endRemoveTimeout);
     }
 
     cancelUpload(id) {
@@ -45,12 +54,16 @@ class UploadStatus {
             if (upload?.abortController) {
                 upload.abortController.abort();
             }
-            this.uploads = this.uploads.filter((u) => u.id !== id);
+            upload.printStatus = "Cancelled";
+            this.onUpdate();
+
+            setTimeout(() => {
+                this.uploads = this.uploads.filter((u) => u.id !== id);
+                this.onUpdate();
+            }, this.cancelRemoveTimeout);
         } else {
             throw new Error(`Upload with id ${id} does not exist`);
         }
-
-        this.onUpdate();
     }
 }
 
