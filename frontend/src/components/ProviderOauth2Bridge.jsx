@@ -25,11 +25,9 @@ const ProviderOauth2Bridge = () => {
                     type: "providerOauth2End",
                 });
                 console.log("OAuth2 callback success:", response);
-                alert("登入成功");
             },
             error(xhr, status, error) {
                 console.error("OAuth2 callback error:", error);
-                alert("登入失敗");
             },
             finally() {
                 // 自動關閉 popup
