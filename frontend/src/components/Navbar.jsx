@@ -15,10 +15,11 @@ const Navbar = () => {
   // 註冊相關
   const handleAuthClick = (groupId) => {
     const clientId = '488776431237-lkq7u7ds5pgjnhcgdltl7o4cq60t151p.apps.googleusercontent.com'
-    const redirectUri = 'http://localhost:8000/provider-oauth2callback/'
+    // const redirectUri = 'http://localhost:8000/provider-oauth2callback/'
+    const redirectUri = 'http://localhost:8000/oauth2callback/'
     const scope = 'openid email profile https://www.googleapis.com/auth/drive'
-    const stateObj = { group_id: groupId, redirect_url: redirectUri }
-    const stateParam = encodeURIComponent(JSON.stringify(stateObj))
+    // const stateObj = { group_id: groupId, redirect_url: redirectUri }
+    // const stateParam = encodeURIComponent(JSON.stringify(stateObj))
     const authUrl = [
       'https://accounts.google.com/o/oauth2/v2/auth',
       `?client_id=${clientId}`,
@@ -27,7 +28,7 @@ const Navbar = () => {
       `&scope=${encodeURIComponent(scope)}`,
       `&access_type=offline`,
       `&prompt=consent`,
-      `&state=${stateParam}`
+      // `&state=${stateParam}`
     ].join('')
     window.location.href = authUrl
   }

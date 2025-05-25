@@ -32,7 +32,7 @@ urlpatterns = [
     path('api/bookmarks/new_folder', bookmark_new_folder, name='bookmarks_new_folder'),
     path('api/bookmarks/delete/<int:bid>', bookmark_delete, name='bookmarks_delete'),
     path('api/bookmarks/delete/enforce/<int:bid>', bookmark_delete, {'enforce': True}, name='bookmarks_delete_enforce'),
-    path('api/bookmarks/remove_provider/<int:bid>', remove_provider, name='remove_provider'),
+    path('api/bookmarks/remove_provider/<int:group_id>', remove_provider, name='remove_provider'),
     
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),

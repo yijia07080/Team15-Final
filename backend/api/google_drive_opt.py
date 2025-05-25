@@ -166,13 +166,21 @@ def download_file(access_token, file_id, folder):
     if not folder.exists():
         raise FileNotFoundError(f"Folder not found: {folder}")
 
+    file_name_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?fields=name"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+    }
+    response = requests.get(file_name_url, headers=headers)
+    if response.status_code != 200:
+        raise ResponseError(f"Error: {response.status_code}, {response.text}", response)
+    file_name = response.json().get('name')
+
     url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
     headers = {
         "Authorization": f"Bearer {access_token}",
     }
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        file_name = response.headers.get('Content-Disposition')
         path = folder / file_name
         if path.exists():
             return path

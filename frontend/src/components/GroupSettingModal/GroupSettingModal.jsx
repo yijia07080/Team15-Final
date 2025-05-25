@@ -33,21 +33,7 @@ const GroupSettingModal = ({ onClose, groupId }) => {
   }
 
   const handleAuthClick = () => {
-    const clientId = '488776431237-lkq7u7ds5pgjnhcgdltl7o4cq60t151p.apps.googleusercontent.com'
-    const redirectUri = 'http://localhost:8000/provider-oauth2callback/'
-    const scope = 'openid email profile https://www.googleapis.com/auth/drive'
-    const authUrl = [
-      'https://accounts.google.com/o/oauth2/v2/auth',
-      `?client_id=${clientId}`,
-      `&redirect_uri=${encodeURIComponent(redirectUri)}`,
-      `&response_type=code`,
-      `&scope=${encodeURIComponent(scope)}`,
-      `&access_type=offline`,
-      `&prompt=consent`
-    ].join('')
-    window.location.href = authUrl
-    
-    // bookmarksTree.addProivder(groupId);
+    bookmarksTree.addProivder(groupId);
   };
 
   const handleNameChange = (e) => {

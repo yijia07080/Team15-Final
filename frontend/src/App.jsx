@@ -39,7 +39,7 @@ function App() {
                   <MainContent />
                 </Layout>
               } />
-              <Route path="/oauth2-bridge" element={<ProviderOauth2Bridge />} />
+              <Route path="/oauth2-bridge/" element={<ProviderOauth2Bridge />} />
             </Routes>
           </BrowserRouter>
         </BookmarksProvider>

@@ -525,24 +525,18 @@ def provider_oauth2callback(request):
     """
     OAuth2 callback for provider login.
     This is used to register a new provider account.
-    Oauth2 should include state:
+    POST request:
     {
-        "group_id": <group_id>,
-        "redirect_url": <redirect_url>
+        groupId,
+        code
     }
     """
-    if request.method != 'GET':
-        return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
-    state_param = request.GET.get("state")
-    if not state_param:
-        return JsonResponse({"status": "error", "message": "Missing state parameter"}, status=400)
-    try:
-        state_json = json.loads(state_param)
-    except ValueError:
-        return JsonResponse({"status": "error", "message": "Invalid state parameter"}, status=400)
-    group_id = state_json.get("group_id")
-    
-    code = request.GET.get('code')
+    # if request.method == 'GET':
+    #     return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
+
+    data = json.loads(request.body)
+    group_id = data.get('groupId')
+    code = data.get('code')
     token_resp = requests.post(
         'https://oauth2.googleapis.com/token',
         data={
@@ -553,6 +547,7 @@ def provider_oauth2callback(request):
             'grant_type': 'authorization_code'
         }
     )
+
     tokens = token_resp.json()
     access_token = tokens.get('access_token')
     refresh_token = tokens.get('refresh_token')
@@ -560,15 +555,12 @@ def provider_oauth2callback(request):
     ensure_cookie(request)
     if not access_token: # 待處理，重複授權情況
         return JsonResponse({'status': 'error', 'message': 'no access_token'}, status=400)
-    
-    state_json = json.loads(request.GET.get('state'))
 
     account = request.session.get('username', 'admin')
     if account == 'admin':
         return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
     user = User.objects.get(account=account)
 
-    group_id = state_json.get('groupId')
     try:
         group = Bookmarks.objects.get(bid=group_id, account=user)
     except Bookmarks.DoesNotExist:
@@ -588,8 +580,8 @@ def provider_oauth2callback(request):
 
     # init google drive folder if not exists
     try:
-        existing_provider = Provider.objects.get(account=user, provider_account=email)
-        drive_root_folder = {'id': existing_provider.google_id}
+        existing_provider = Provider.objects.get(provider_account=email)
+        return JsonResponse({"status": "error", "message": "Provider already exists"}, status=400)
     except Provider.DoesNotExist:
         try:
             drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)  
@@ -608,8 +600,8 @@ def provider_oauth2callback(request):
 
     provider, created = Provider.objects.update_or_create(
         account=user,
+        provider_account=email,
         defaults={
-            'provider_account': email,
             'provider_name': name,
             'provider_picture': picture,
             'access_token': access_token,
@@ -622,9 +614,9 @@ def provider_oauth2callback(request):
 
     # add provider to group
     if provider.provider_account not in group.space_providers:
-        group.space_providers.append(provider.provider_account)
+        group.space_providers = group.space_providers + [provider.provider_account]
         group.save()
-    return redirect(state_json.get('redirectBridge', 'http://localhost:5174/'))
+    return JsonResponse({"status": "success", "message": "Provider added successfully"}, status=200)
 
 def remove_provider(request, group_id):
     '''
@@ -699,7 +691,7 @@ def remove_provider(request, group_id):
             )
 
             file.google_id = new_file_json['id']
-            file.space_providers = [p for p in file.space_providers if p != remove_provider_account]
+            file.space_providers = [current_provider.provider_account]
             file.save()
         except google_drive_opt.ResponseError as e:
             return JsonResponse({"status": "error", "message": f"Error moving file", "response": e.response}, status=e.response.status_code)

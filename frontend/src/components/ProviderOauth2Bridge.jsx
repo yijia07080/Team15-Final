@@ -1,15 +1,42 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import $ from "jquery";
 
 const ProviderOauth2Bridge = () => {
-    // 傳回主頁
-    if (window.opener) {
-        window.opener.postMessage(
-            {type: 'providerOauth2End'}, 
-            "http://localhost:5174/" // 確保這裡的 URL 與你的主頁 URL 相符
-        );
-        window.close();
-    }
+    useEffect(() => {
+        // 取得 google oauth2 code 並轉發給後端
+        const broadcastChannel = new BroadcastChannel("oauth2_channel");
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get("code");
+        const state = searchParams.get("state");
+        const groupId = state ? JSON.parse(state).groupId : "no-group";
+        $.ajax({
+            url: "http://localhost:8000/provider-oauth2callback/",
+            type: "POST",
+            contentType: 'application/json',
+            crossDomain: true,
+            data: JSON.stringify({
+                code: code,
+                groupId: groupId
+            }),
+            xhrFields: { withCredentials: true },
+            success(response) {
+                broadcastChannel.postMessage({
+                    type: "providerOauth2End",
+                });
+                console.log("OAuth2 callback success:", response);
+                alert("登入成功");
+            },
+            error(xhr, status, error) {
+                console.error("OAuth2 callback error:", error);
+                alert("登入失敗");
+            },
+            finally() {
+                // 自動關閉 popup
+                window.close();
+            }
+        });
+    }, []);
 
     return <p>登入中，請稍候...</p>;
 }

@@ -374,48 +374,15 @@ class BookmarksTree {
     this.onUpdate();
   }
 
-  requestUpdateWithBackend() {
-    let userInfo = null;
-    let treeStructure = null;
-    let idToBookmark = null;
-    $.ajax({
-      url: 'http://localhost:8000/api/bookmarks/init',
-      type: 'POST',
-      contentType: 'application/json',
-      crossDomain: true,
-      xhrFields: {
-          withCredentials: true
-      },
-      success: function (data) {
-          userInfo = data.userInfo;
-          treeStructure = data.treeStructure;
-          idToBookmark = data.idToBookmark;
-
-          console.log('init data from server');
-          console.log('username', userInfo);
-          console.log('treeStructure', treeStructure);
-          console.log('idToBookmark', idToBookmark);
-
-          this._buildTree(treeStructure, idToBookmark);
-          this.userInfo = userInfo;
-          this.onUpdate();
-      },
-      error: function (xhr, status, error) {
-          console.error('Error:', error);
-      }
-    })
-  }
-
   addProivder(groupId) {
     // open new window to google oauth2
     // google oauth2 => backend => redirect to frontend (/ProviderOauth2Bridge)
     // => /ProviderOauth2Bridge send window.postMessage => original window receive message
     // => original window request backend to update new data
     const clientId = '488776431237-lkq7u7ds5pgjnhcgdltl7o4cq60t151p.apps.googleusercontent.com';
-    const redirectUri = 'http://localhost:8000/provider-oauth2callback/'
+    const redirectUri = 'http://localhost:5174/oauth2-bridge/'
     const state = encodeURIComponent(JSON.stringify({
       groupId: groupId,
-      redirectBridge: 'http://localhost:5174/oauth2-bridge'
     }));
     const scope = 'openid email profile https://www.googleapis.com/auth/drive'
     const authUrl = [
@@ -428,28 +395,59 @@ class BookmarksTree {
       `&access_type=offline`,
       `&prompt=consent`
     ].join('')
+    const broadcastChannel = new BroadcastChannel('oauth2_channel');
     const authWindow = window.open(authUrl, '_blank', 'width=600,height=600');
 
+    const self = this;
     new Promise((resolve, reject) => {
-      window.addEventListener('message', (event) => {
-        if (event.origin !== window.location.origin) {
-          return;
-        }
-        if (event.data && event.data.type === 'providerOauth2End') {
+      // 等待 1 分後timeout
+      const timeoutId = setTimeout(() => {
+        reject(new Error("OAuth2 authentication timed out."));
+      }, 60000);
+
+      broadcastChannel.addEventListener('message', (event) => {
+        if (event.data.type === 'providerOauth2End') {
+          clearTimeout(timeoutId);
           resolve();
-        } else {
-          reject(event.data);
         }
-
-        // 等待 30 秒後timeout
-        setTimeout(() => {
-          reject(new Error("OAuth2 authentication timed out."));
-        }, 30000);
       }, { once: true });
-
     }).then(() => {
-      this.requestUpdateWithBackend();
-
+      return new Promise((resolve, reject) => {
+        $.ajax({
+          url: 'http://localhost:8000/api/bookmarks/init',
+          type: 'POST',
+          contentType: 'application/json',
+          crossDomain: true,
+          xhrFields: {
+              withCredentials: true
+          },
+          success: function (data) {
+            let userInfo = data.userInfo;
+            let treeStructure = data.treeStructure;
+            let idToBookmark = data.idToBookmark;
+  
+            console.log('init data from server');
+            console.log('username', userInfo);
+            console.log('treeStructure', treeStructure);
+            console.log('idToBookmark', idToBookmark);
+  
+            resolve({
+              userInfo: userInfo,
+              treeStructure: treeStructure,
+              idToBookmark: idToBookmark
+            });
+          },
+          error: function (xhr, status, error) {
+              console.error('Error:', error);
+              reject(error);
+          }
+        })
+      });
+    }).then((data) => {
+      self._buildTree(data.treeStructure, data.idToBookmark);
+      self.userInfo = data.userInfo;
+      self.onUpdate();
+      console.log("Provider OAuth2 success:", data);
     }).catch((error) => {
       console.error("Provider OAuth2 failed:", error);
 
@@ -477,25 +475,25 @@ class BookmarksTree {
       delete this.idToBookmark[node_id];
       // this.loaclDB.delId(node_id);
     };
-    _deleteBookmark(id);
-
+    
+    const self = this;
     $.ajax({
       url: 'http://localhost:8000/api/bookmarks/delete/enforce/' + id,
       type: 'POST',
       contentType: 'application/json',
       crossDomain: true,
       xhrFields: {
-          withCredentials: true
+        withCredentials: true
       },
-    success: function (data) {
+      success: function (data) {
+        _deleteBookmark(id);
+        self.onUpdate();
         console.log("Server delete success:", data);
       },
     error: function (xhr, status, error) {
         console.error('Server delete error:', error);
       }
     });
-
-    this.onUpdate();
   }
 
   removeSpaceProvider(id, provider) {
@@ -503,23 +501,24 @@ class BookmarksTree {
     if (bookmark.metadata.file_type !== "group") {
       throw new Error("Only group bookmarks can have space providers.");
     }
-
-    bookmark.metadata.spaceProviders = bookmark.metadata.spaceProviders.filter(
-      (p) => p.name !== provider.name,
-    );
-
+    
+    const self = this;
     $.ajax({
-      url: 'http://localhost:8000/api/bookmarks/remove_provider/<int:bid>' + id,
+      url: 'http://localhost:8000/api/bookmarks/remove_provider/' + id,
       type: 'POST',
       contentType: 'application/json',
       crossDomain: true,
       xhrFields: {
-          withCredentials: true
+        withCredentials: true
       },
       data: JSON.stringify({
         provider_account: provider,
       }),
       success: function (data) {
+        self.idToBookmark[id].metadata.spaceProviders = self.idToBookmark[id].metadata.spaceProviders.filter(
+          (p) => p.name !== provider,
+        );
+        self.onUpdate();
         console.log("Server remove provider success:", data);
       },
       error: function (xhr, status, error) {
