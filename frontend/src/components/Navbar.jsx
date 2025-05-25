@@ -98,19 +98,19 @@ const Navbar = () => {
 
   return (
     <nav className="d-flex flex-wrap gap-2">
-      <div className="search-bar flex-shrink-0 col-12 col-md-5 col-lg-4">
-        <input
-          type="text"
-          placeholder="搜尋書籤、資料夾"
-          value={searchInput}
-          onChange={handleSearchInputChange}
-        />
-      </div>
+      {bookmarksTree.currentNode !== 0 && (
+        <div className="search-bar flex-shrink-0 col-12 col-md-5 col-lg-4">
+          <input
+            type="text"
+            placeholder="搜尋書籤、資料夾"
+            value={searchInput}
+            onChange={handleSearchInputChange}
+          />
+        </div>
+      )}
       <div className="d-flex justify-content-center align-items-center gap-2">
-        {/* <button className="btn btn-outline-secondary d-flex align-items-center">
-          <img src={imageMap["sort.png"]} alt="Sort Icon" />
-          <span>排序與檢視</span>
-        </button> */}
+
+        {bookmarksTree.currentNode !== 0 && (
         <button
           className={`btn d-flex align-items-center ${isFilterActive ? "btn-dark" : "btn-outline-secondary"}`}
           onClick={handleTagFilterButtonClick}
@@ -118,19 +118,23 @@ const Navbar = () => {
           <img src={imageMap["tag.png"]} alt="Tag Icon" />
           <span>篩選標籤</span>
         </button>
+        )}
+        {bookmarksTree.currentNode !== 0 && (
         <button
           className="btn btn-outline-secondary d-flex align-items-center"
           onClick={handleAddBookmarkButtonClick}
         >
           <img src={imageMap["add.png"]} alt="Add Button" />
         </button>
+        )}
+        {bookmarksTree.currentNode !== 0 && (
         <button
           className="btn btn-outline-secondary d-flex align-items-center"
           onClick={handleAddFolderButtonClick}
         >
-
           <img src={imageMap["folder.png"]} alt="Add Folder Button" />
         </button>
+      )}
         <div className="d-flex justify-content-center align-items-center gap-2">
           {!isLogin && (
             <div className="d-flex justify-content-center align-items-center gap-2">

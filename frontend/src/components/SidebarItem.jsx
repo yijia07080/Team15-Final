@@ -120,7 +120,7 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onM
         </div>
         <div className="hidden-setting">
           <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
-          <img src={imageMap["edit.png"]} alt="Edit Icon" name="edit" />
+          <img src={imageMap["person.png"]} alt="Edit Icon" name="edit" />
         </div>
         {/* <div className="hidden-setting">
           <img src={imageMap["full_star.png"]} alt="Star Icon" name="star" />
