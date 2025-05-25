@@ -1018,6 +1018,9 @@ def bookmark_move(request, bid):
     new_parent_ts = TreeStructure.objects.get(account=account, bookmark_foreignkey=new_parent)
     old_parent_ts = TreeStructure.objects.get(account=account, bid=bookmark_ts.parent_id)
 
+    if new_parent_ts.bid == old_parent_ts.bid:
+        return JsonResponse({"status": "success", "message": "File already in the target folder"}, status=200)
+
     # adjust tree structure (same as move)
     bookmark_ts.parent_id = new_parent.bid
     new_parent_ts.children_id = list(set(new_parent_ts.children_id + [bookmark.bid]))  
