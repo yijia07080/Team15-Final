@@ -531,72 +531,119 @@ def provider_oauth2callback(request):
         code
     }
     """
+    logger.info("provider_oauth2callback called")
+    logger.debug("Request method: %s", request.method)
+    logger.debug("Raw body: %s", request.body)
+
     # if request.method == 'GET':
     #     return JsonResponse({"status": "error", "message": "GET method not allowed"}, status=405)
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+        logger.debug("Parsed JSON: %s", data)
+    except json.JSONDecodeError as e:
+        logger.error("JSON decode error: %s", e)
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
     group_id = data.get('groupId')
     code = data.get('code')
-    token_resp = requests.post(
-        'https://oauth2.googleapis.com/token',
-        data={
-            'code': code,
-            'client_id': settings.CLIENT_ID,
-            'client_secret': settings.CLIENT_SECRET,
-            'redirect_uri': settings.PROVIDER_REDIRECT_URI,
-            'grant_type': 'authorization_code'
-        }
-    )
+    logger.info("Received group_id=%s, code=%s", group_id, code)
 
-    tokens = token_resp.json()
+    try:
+        token_resp = requests.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'code': code,
+                'client_id': settings.CLIENT_ID,
+                'client_secret': settings.CLIENT_SECRET,
+                'redirect_uri': settings.PROVIDER_REDIRECT_URI,
+                'grant_type': 'authorization_code'
+            },
+            timeout=10
+        )
+        logger.warning(
+            "Token endpoint response status: %s, body: %s",
+            token_resp.status_code,
+            token_resp.text
+        )
+        tokens = token_resp.json()
+        logger.warning("Tokens response: %s", tokens)
+    except Exception as e:
+        logger.exception("Error fetching tokens")
+        return JsonResponse({"status": "error", "message": "Token request failed"}, status=502)
+
     access_token = tokens.get('access_token')
     refresh_token = tokens.get('refresh_token')
+    logger.info("Access token obtained: %s", bool(access_token))
 
     ensure_cookie(request)
-    if not access_token: # 待處理，重複授權情況
+    if not access_token:
+        logger.warning("No access_token in token response")
         return JsonResponse({'status': 'error', 'message': 'no access_token'}, status=400)
 
     account = request.session.get('username', 'admin')
+    logger.debug("Session username: %s", account)
     if account == 'admin':
+        logger.error("No user session found")
         return JsonResponse({"status": "error", "message": "No user session found"}, status=400)
-    user = User.objects.get(account=account)
+
+    try:
+        user = User.objects.get(account=account)
+        logger.debug("User fetched: %s", user)
+    except User.DoesNotExist:
+        logger.exception("User does not exist")
+        return JsonResponse({"status": "error", "message": "User not found"}, status=404)
 
     try:
         group = Bookmarks.objects.get(bid=group_id, account=user)
+        logger.debug("Group fetched: %s", group)
     except Bookmarks.DoesNotExist:
+        logger.error("Group not found: bid=%s, account=%s", group_id, account)
         return JsonResponse({"status": "error", "message": "Group not found"}, status=404)
+
     if group.file_type != "group":
+        logger.error("Invalid file_type for group: %s", group.file_type)
         return JsonResponse({"status": "error", "message": "Not a group"}, status=400)
 
-    provider_info_response = requests.get(
-        'https://openidconnect.googleapis.com/v1/userinfo',
-        headers={'Authorization': f'Bearer {access_token}'}
-    )
+    try:
+        provider_info_response = requests.get(
+            'https://openidconnect.googleapis.com/v1/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10
+        )
+        logger.debug("Userinfo response status: %s", provider_info_response.status_code)
+        provider_info = provider_info_response.json()
+        logger.debug("Userinfo data: %s", provider_info)
+    except Exception as e:
+        logger.exception("Error fetching user info")
+        return JsonResponse({"status": "error", "message": "Failed to get user info"}, status=502)
 
-    provider_info = provider_info_response.json()
     email = provider_info.get('email')
     name = provider_info.get('name')
     picture = provider_info.get('picture')
+    logger.info("Provider info: email=%s, name=%s", email, name)
 
     # init google drive folder if not exists
     try:
         existing_provider = Provider.objects.get(provider_account=email)
-        return JsonResponse({"status": "error", "message": "Provider already exists"}, status=400)
+        logger.warning("Provider already exists: %s", email)
     except Provider.DoesNotExist:
-        try:
-            drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)  
-        except google_drive_opt.ResponseError as e:
-            return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
-        except Exception as e:
-            raise e
-        
+        logger.debug("No existing provider, will create new one")
+
+    try:
+        drive_root_folder = google_drive_opt.create_folder(access_token, DRIVE_ROOT_FOLDER)
+        logger.info("Drive root folder created/found: %s", drive_root_folder.get('id'))
+    except google_drive_opt.ResponseError as e:
+        logger.error("Google Drive API error: %s", e)
+        return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
+
     # update or create provider
     try:
         total_size, used_size = google_drive_opt.get_account_size(access_token)
+        logger.info("Drive usage: total=%s, used=%s", total_size, used_size)
     except google_drive_opt.ResponseError as e:
+        logger.error("Error getting account size: %s", e)
         return JsonResponse({"status": "error", "message": f"Error: {e}"}, status=e.response.status_code)
-    except Exception as e:
-        raise e
 
     provider, created = Provider.objects.update_or_create(
         account=user,
@@ -611,11 +658,17 @@ def provider_oauth2callback(request):
             'used_size': used_size,
         }
     )
+    logger.info("Provider %s: %s", "created" if created else "updated", provider)
 
     # add provider to group
     if provider.provider_account not in group.space_providers:
         group.space_providers = group.space_providers + [provider.provider_account]
         group.save()
+        logger.info("Provider added to group space_providers: %s", group.space_providers)
+    else:
+        logger.debug("Provider already in group.space_providers")
+
+    logger.info("provider_oauth2callback completed successfully")
     return JsonResponse({"status": "success", "message": "Provider added successfully"}, status=200)
 
 def remove_provider(request, group_id):
