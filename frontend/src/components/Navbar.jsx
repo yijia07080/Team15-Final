@@ -6,7 +6,7 @@ import AddFolderModal from "./AddFolderModal/AddFolderModal";
 import TagFilterModal from "./TagFilterModal/TagFilterModal";
 import BookmarksContext from "../context/BookmarksContext";
 import $ from "jquery";
-import TooltipButton from "./TooltipButton";
+import Tooltip from "./Tooltip";
 
 const Navbar = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
@@ -120,35 +120,35 @@ const Navbar = () => {
       <div className="d-flex justify-content-center align-items-center gap-2">
 
         {bookmarksTree.currentNode !== 0 && (
-        <TooltipButton
-          className={`btn d-flex align-items-center ${isFilterActive ? "btn-dark" : "btn-outline-secondary"}`}
-          onClick={handleTagFilterButtonClick}
-          tooltip="根據標籤篩選檔案與資料夾"
-          position="bottom"
-        >
+        <Tooltip tooltip="根據標籤篩選檔案與資料夾" position="bottom">
+          <button
+            className={`btn d-flex align-items-center ${isFilterActive ? "btn-dark" : "btn-outline-secondary"}`}
+            onClick={handleTagFilterButtonClick}
+          >
           <img src={imageMap["tag.png"]} alt="Tag Icon" />
           <span>篩選標籤</span>
-        </TooltipButton>
+          </button>
+        </Tooltip>
         )}
         {bookmarksTree.currentNode !== 0 && (
-        <TooltipButton
-          className="btn btn-outline-secondary d-flex align-items-center"
-          onClick={handleAddBookmarkButtonClick}
-          tooltip="上傳新檔案"
-          position="bottom"
-        >
+        <Tooltip  tooltip="上傳新檔案" position="bottom">
+          <button
+            className="btn btn-outline-secondary d-flex align-items-center"
+            onClick={handleAddBookmarkButtonClick}
+          >
           <img src={imageMap["add.png"]} alt="Add Button" />
-        </TooltipButton>
+          </button>
+        </Tooltip>
         )}
         {bookmarksTree.currentNode !== 0 && (
-        <TooltipButton
+        <Tooltip tooltip="新增資料夾" position="bottom">
+          <button 
           className="btn btn-outline-secondary d-flex align-items-center"
           onClick={handleAddFolderButtonClick}
-          tooltip="新增資料夾"
-          position="bottom"
-        >
-          <img src={imageMap["folder.png"]} alt="Add Folder Button" />
-        </TooltipButton>
+          >
+            <img src={imageMap["folder.png"]} alt="Add Folder Button" />
+          </button>
+        </Tooltip>
       )}
         <div className="d-flex justify-content-center align-items-center gap-2">
           {!isLogin && (

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import GroupSettingModal from "./GroupSettingModal/GroupSettingModal";
 import imageMap from "../utils/imageMap";
-import TooltipButton from "./TooltipButton"; 
+import TooltipButton from "./Tooltip"; 
 
 const HomeItem = ({ onMoveToFolder }) => {
   // 攔截拖曳事件並取消
