@@ -1,0 +1,74 @@
+.homepage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw; 
+  background-color: #1e1e1e;
+  color: white;
+  padding: 0 20px;
+}
+
+
+.content {
+  max-width: 800px;
+  text-align: center;
+}
+
+.title {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  font-weight: bold;
+  color: #f8f9fa;
+}
+
+.description {
+  font-size: 1.2rem;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+  color: #adb5bd;
+}
+
+.buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.registerButton, .loginButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.registerButton {
+  background-color: #4285f4;
+  color: white;
+}
+
+.registerButton:hover {
+  background-color: #3367d6;
+}
+
+.loginButton {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+}
+
+.loginButton:hover {
+  background-color: #444;
+}
+
+.registerButton img, .loginButton img {
+  width: 20px;
+  height: 20px;
+}
