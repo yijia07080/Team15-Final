@@ -117,6 +117,15 @@ class BookmarksTree {
       return;
     }
 
+    // 檢查目標群組是否有足夠的空間
+    const itemSize = this.idToBookmark[itemId]?.metadata?.used_size || 0;
+    const availableSpace = targetFolder.metadata.total_size - targetFolder.metadata.used_size;
+    if (itemSize > availableSpace || availableSpace < 100) {
+        console.error("Not enough space in the target group.");
+        alert("目標群組空間不足，無法移動檔案。");
+        return;
+    }
+
     // 不能將自己移動到自己的子群組
     let current = groupId;
     while (this.treeStructure[current]) {
