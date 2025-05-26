@@ -202,6 +202,10 @@ class BookmarksTree {
 
   // 上傳新檔案，調整idToBookmark與treeStructure，並通知 React 更新
   addBookmark({ name, tags, img, hidden, file_type, used_size}, file) {
+    if (file.webkitRelativePath || (file.type === '' && file.name.indexOf('.') === -1)) {
+      alert('不支援上傳資料夾，請選擇單一檔案。');
+      return;
+    }
     const id = Date.now(); // 使用當前時間戳作為唯一 ID
     if (!tags.some(tag => tag === file_type)) {
       tags.push(file_type); // 加上檔案類型的標籤

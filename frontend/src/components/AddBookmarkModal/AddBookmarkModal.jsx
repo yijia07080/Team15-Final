@@ -70,6 +70,19 @@ const AddBookmarkModal = ({ onClose, currentFilterTags }) => {
     e.preventDefault();
     setIsDragging(false);
     
+    // Check for folders using DataTransferItemList API
+    if (e.dataTransfer.items) {
+      for (let i = 0; i < e.dataTransfer.items.length; i++) {
+        const item = e.dataTransfer.items[i];
+        // Use webkitGetAsEntry API to check if it's a directory
+        if (item.webkitGetAsEntry && item.webkitGetAsEntry().isDirectory) {
+          alert('不支援上傳資料夾，請選擇單一檔案。');
+          return;
+        }
+      }
+    }
+    
+    // Continue with normal file handling
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const selectedFile = e.dataTransfer.files[0];
       setFile(selectedFile);
