@@ -380,3 +380,58 @@ a:visited {
 .download-progress-bar {
   background-color: #28a745; /* Green progress bar for downloads */
 }
+
+/* Tooltip 樣式 */
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-container .tooltip-text {
+  visibility: hidden;
+  width: auto;
+  min-width: 120px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 8px;
+  position: absolute;
+  z-index: 1090;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tooltip-container .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip-container .tooltip-bottom {
+  bottom: auto;
+  top: 125%;
+}
+
+.tooltip-container .tooltip-bottom::after {
+  top: auto;
+  bottom: 100%;
+  border-color: transparent transparent #333 transparent;
+}

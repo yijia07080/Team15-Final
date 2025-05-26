@@ -1,7 +1,7 @@
 import { useState } from "react";
 import GroupSettingModal from "./GroupSettingModal/GroupSettingModal";
 import imageMap from "../utils/imageMap";
-
+import TooltipButton from "./TooltipButton"; 
 
 const HomeItem = ({ onMoveToFolder }) => {
   // 攔截拖曳事件並取消
@@ -119,8 +119,12 @@ const SidebarItem = ({ item, onToggleStar, onMoveToFolder, onDeleteBookmark, onM
           <span>{item.name}</span>
         </div>
         <div className="hidden-setting">
-          <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
-          <img src={imageMap["person.png"]} alt="Edit Icon" name="edit" />
+          <TooltipButton tooltip="刪除此群組及內部所有檔案" position="bottom">
+            <img src={imageMap["delete.png"]} alt="Delete Icon" name="delete" />
+          </TooltipButton>
+          <TooltipButton tooltip="新增帳號至群組" position="bottom">
+            <img src={imageMap["person.png"]} alt="Edit Icon" name="edit" />
+          </TooltipButton>
         </div>
         {/* <div className="hidden-setting">
           <img src={imageMap["full_star.png"]} alt="Star Icon" name="star" />
