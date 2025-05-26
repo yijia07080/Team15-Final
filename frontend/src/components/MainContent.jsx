@@ -6,7 +6,10 @@ import DownloadContext from "../context/DownloadContext";
 
 const MainContent = () => {
   const { bookmarksTree } = useContext(BookmarksContext);
-  const bookmarks = bookmarksTree.getCurrentChildren().filter(b => !b.hidden);
+  // const bookmarks = bookmarksTree.getCurrentChildren().filter(b => !b.hidden);
+  const bookmarks = bookmarksTree.currentSearchKeyword.trim() 
+  ? (bookmarksTree.searchResults || []).filter(b => !b.hidden) 
+  : bookmarksTree.getCurrentChildren().filter(b => !b.hidden);
 
   const [menu, setMenu] = useState({ show: false, x: 0, y: 0, bookmark: null });
   const [showSelectDestModal, setSelectDestModal] = useState(false);

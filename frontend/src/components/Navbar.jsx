@@ -98,7 +98,7 @@ const Navbar = () => {
 
   return (
     <nav className="d-flex flex-wrap gap-2">
-      {bookmarksTree.currentNode !== 0 && (
+      {/* {bookmarksTree.currentNode !== 0 && (
         <div className="search-bar flex-shrink-0 col-12 col-md-5 col-lg-4">
           <input
             type="text"
@@ -107,7 +107,15 @@ const Navbar = () => {
             onChange={handleSearchInputChange}
           />
         </div>
-      )}
+      )} */}
+      <div className="search-bar flex-shrink-0 col-12 col-md-5 col-lg-4">
+        <input
+          type="text"
+          placeholder="搜尋書籤、資料夾"
+          value={searchInput}
+          onChange={handleSearchInputChange}
+        />
+      </div>
       <div className="d-flex justify-content-center align-items-center gap-2">
 
         {bookmarksTree.currentNode !== 0 && (

@@ -547,11 +547,53 @@ class BookmarksTree {
   }
 
   // 根據關鍵字過濾書籤和資料夾
+  // filterBookmarksByKeyword(keyword) {
+  //   this.currentSearchKeyword = keyword;
+  //   this.applyFilters();
+  // }
+  // 根據關鍵字過濾書籤和資料夾
   filterBookmarksByKeyword(keyword) {
     this.currentSearchKeyword = keyword;
+    
+    if (!keyword.trim()) {
+      // 如果搜尋關鍵字為空，清除搜尋結果
+      this.searchResults = null;
+      this.applyFilters();
+      return;
+    }
+    
+    // 遞歸搜尋函式
+    const findMatchesRecursively = (nodeId) => {
+      let matches = [];
+      
+      // 搜尋當前節點的子節點
+      const children = this.treeStructure[nodeId].children_id;
+      for (const childId of children) {
+        const bookmark = this.idToBookmark[childId];
+        
+        // 如果名稱符合關鍵字，加入結果
+        if (bookmark.name.toLowerCase().includes(keyword.toLowerCase()) ||
+            bookmark.tags.some(tag => tag.toLowerCase().includes(keyword.toLowerCase()))) {
+          matches.push(bookmark);
+        }
+        
+        // 如果是資料夾或群組，遞歸搜尋其子節點
+        if (bookmark.metadata.file_type === "folder" || 
+            bookmark.metadata.file_type === "group" || 
+            bookmark.metadata.file_type === "root") {
+          matches = matches.concat(findMatchesRecursively(childId));
+        }
+      }
+      
+      return matches;
+    };
+    
+    // 從當前節點開始搜尋，如果在根節點則搜尋整個樹
+    const startNode = this.currentNode;
+    this.searchResults = findMatchesRecursively(startNode);
+    
     this.applyFilters();
   }
-
   // 同時應用搜尋和篩選
   applyFilters() {
     const lowerKeyword = this.currentSearchKeyword.toLowerCase();
