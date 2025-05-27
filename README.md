@@ -61,14 +61,15 @@
 
 請先下載 [.env](https://drive.google.com/file/d/1RyRda1HHXQet-3eS_d-mLkvPg1rLgLv7/view?usp=sharing)，並放置於 Team15-Final 的根目錄 :
 
-Team15-Final
+```
+TEAM15
 ├─ backend
 ├─ frontend
 ├─ docker
 ├─ HW_Report
 ├─ ...
-└─ .env <=== 將下載的 .env 檔案放置於此
-
+└─ .env <=== 將下載的 .env 檔案放置於此 
+```
 
 ### 2. 安裝 Docker
 
@@ -76,43 +77,44 @@ Team15-Final
 
 打開終端機或命令提示字元，輸入以下指令檢查版本：
 
-bash
+```bash
 docker -v
-
+```
 
 ### 4. 專案設定
 
-從 GitHub 專案中取得 docker-compose.yml 的 Docker 的設定檔。
+從 GitHub 專案中取得 `docker-compose.yml` 的 Docker 的設定檔。
 
 GitHub 專案結構如下：
 
+```
 TEAM15
 ├─ backend
 ├─ frontend
 └─ docker
     └─ docker-compose.yml
-
+```
 
 ### 5. 移動至指定目錄
 
-在終端機中切換至 docker 資料夾：
+在終端機中切換至 `docker` 資料夾：
 
-bash
+```bash
 cd TEAM15/docker
-
+```
 
 ### 6. 執行容器
 
-當位於 docker-compose.yml 所在的資料夾時，執行以下指令啟動容器：
+當位於 `docker-compose.yml` 所在的資料夾時，執行以下指令啟動容器：
 
-bash
+```bash
 docker-compose -f ./docker-compose.yml up
-
+```
 
 ### 7. 訪問網站
 
-- 可透過 localhost:5174 訪問前端。
+- 可透過 `localhost:5174` 訪問前端。
 
-- 可透過 localhost:8000 訪問後端 API。
+- 可透過 `localhost:8000` 訪問後端 API。
 
-- 可透過 localhost:8080 訪問後端資料庫。
+- 可透過 `localhost:8080` 訪問後端資料庫。
