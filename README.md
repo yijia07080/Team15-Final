@@ -59,16 +59,15 @@
 
 ### 1. clone專案與下載.env
 
-請先下載 [.env的壓縮檔](https://drive.google.com/file/d/1gPtCsZdbOk7pmF0ESw8kAXkb98k-4jEy/view?usp=sharing)，解壓縮後將 .env 檔案放置於 Team15-Final 的根目錄，確保檔案名稱與路徑與下表相符合 :
+請先下載 [env.zip](https://drive.google.com/file/d/1gPtCsZdbOk7pmF0ESw8kAXkb98k-4jEy/view?usp=sharing)，解壓縮後將裡面的 .env 檔放置於 Team15-Final 的根目錄，確保檔案名稱與路徑與下表相符合 :
 
 ```
 Team15-Final
 ├─ backend
 ├─ frontend
 ├─ docker
-├─ HW_Report
 ├─ ...
-└─ .env <=== 將下載的 .env 檔案解壓縮後放置於此 
+└─ .env <=== 將下載的 .env 檔案放置於此 
 ```
 
 ### 2. 安裝 Docker
