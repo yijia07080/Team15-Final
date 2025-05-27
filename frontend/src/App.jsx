@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BookmarksProvider } from "./context/BookmarksContext";
 import { UploadProvider } from "./context/UploadContext";
 import { DownloadProvider } from "./context/DownloadContext";
-import ProviderOauth2Bridge from "./components/providerOauth2Bridge";
+import ProviderOauth2Bridge from "./components/ProviderOauth2Bridge";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import Breadcrumb from "./components/Breadcrumb";
