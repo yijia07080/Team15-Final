@@ -57,12 +57,12 @@
 ---
 ## 操作使用:
 
-### 1. 下載.env
+### 1. clone專案與下載.env
 
 請先下載 [.env](https://drive.google.com/file/d/1RyRda1HHXQet-3eS_d-mLkvPg1rLgLv7/view?usp=sharing)，並放置於 Team15-Final 的根目錄 :
 
 ```
-TEAM15
+Team15-Final
 ├─ backend
 ├─ frontend
 ├─ docker
@@ -88,7 +88,7 @@ docker -v
 GitHub 專案結構如下：
 
 ```
-TEAM15
+Team15-Final
 ├─ backend
 ├─ frontend
 └─ docker
@@ -100,7 +100,7 @@ TEAM15
 在終端機中切換至 `docker` 資料夾：
 
 ```bash
-cd TEAM15/docker
+cd Team15-Final/docker
 ```
 
 ### 6. 執行容器
