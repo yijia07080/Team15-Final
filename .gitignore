@@ -2,5 +2,3 @@ node_modules/
 private/
 **/__pycache__/
 .env
-mariadb/bookmarks/api_provider.ibdm
-mariadb/bookmarks/api_provider.ibd
