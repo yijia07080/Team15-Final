@@ -1,6 +1,7 @@
 # 📁 Google Driver 多雲端帳號管理系統
 
 **輕鬆整合與管理多個 Google 帳號的雲端檔案**，提供**統一介面、強大搜尋與分類功能**，提升使用效率與便利性。
+![Download_upload](frontend/src/assets/download_upload.gif)
 
 ---
 
